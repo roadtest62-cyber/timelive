@@ -1,157 +1,158 @@
+/**
+ * Quản lý thời gian livestream
+ * Lưu trữ trên localStorage, chạy hoàn toàn trên trình duyệt.
+ */
+
 document.addEventListener('DOMContentLoaded', () => {
-  const monthSelect = document.getElementById('monthSelect');
-  const yearSelect = document.getElementById('yearSelect');
-  const daysTableBody = document.getElementById('daysTableBody');
-  const summarySection = document.getElementById('summarySection');
-  const importFileInput = document.getElementById('importFileInput');
-  const loadingOverlay = document.getElementById('loadingOverlay');
+  // ===== DOM =====
+  const $ = (id) => document.getElementById(id);
+  const monthSelect = $('monthSelect');
+  const yearSelect = $('yearSelect');
+  const tbody = $('tbody');
+  const summaryEl = $('summary');
+  const saveStatusEl = $('saveStatus');
+  const restoreFileInput = $('restoreFileInput');
 
-  firebase.initializeApp(FIREBASE_CONFIG);
-  const db = firebase.firestore();
-
+  // ===== STATE =====
+  const now = new Date();
   const state = {
-    year: new Date().getFullYear(),
-    month: new Date().getMonth() + 1,
-    days: []
+    year: now.getFullYear(),
+    month: now.getMonth() + 1,
+    days: [] // [{date:'2026-08-01', sessions:[{id,label,value}]}]
   };
 
+  const STORAGE_PREFIX = 'livestream_';
+
+  // ===== INIT =====
   function init() {
-    populateMonthSelect();
-    populateYearSelect();
-    monthSelect.value = String(state.month);
-    yearSelect.value = String(state.year);
+    populateSelects();
     bindEvents();
     loadMonth();
   }
 
-  function populateMonthSelect() {
+  // ===== POPULATE SELECTS =====
+  function populateSelects() {
     monthSelect.innerHTML = '';
-    for (let month = 1; month <= 12; month += 1) {
-      const option = document.createElement('option');
-      option.value = String(month);
-      option.textContent = `Tháng ${String(month).padStart(2, '0')}`;
-      monthSelect.appendChild(option);
+    for (let m = 1; m <= 12; m++) {
+      const o = document.createElement('option');
+      o.value = m;
+      o.textContent = `Tháng ${String(m).padStart(2, '0')}`;
+      monthSelect.appendChild(o);
     }
-  }
-
-  function populateYearSelect() {
     yearSelect.innerHTML = '';
-    const currentYear = new Date().getFullYear();
-    for (let year = currentYear - 3; year <= currentYear + 3; year += 1) {
-      const option = document.createElement('option');
-      option.value = String(year);
-      option.textContent = String(year);
-      yearSelect.appendChild(option);
+    const cy = now.getFullYear();
+    for (let y = cy - 5; y <= cy + 2; y++) {
+      const o = document.createElement('option');
+      o.value = y;
+      o.textContent = y;
+      yearSelect.appendChild(o);
     }
+    monthSelect.value = state.month;
+    yearSelect.value = state.year;
   }
 
-  function showLoading() {
-    loadingOverlay.style.display = 'flex';
-  }
-
-  function hideLoading() {
-    loadingOverlay.style.display = 'none';
-  }
-
+  // ===== EVENTS =====
   function bindEvents() {
+    // Tự load khi đổi tháng/năm
     monthSelect.addEventListener('change', () => {
-      state.year = Number(yearSelect.value);
-      state.month = Number(monthSelect.value);
+      state.month = +monthSelect.value;
+      state.year = +yearSelect.value;
       loadMonth();
     });
-
     yearSelect.addEventListener('change', () => {
-      state.year = Number(yearSelect.value);
-      state.month = Number(monthSelect.value);
+      state.month = +monthSelect.value;
+      state.year = +yearSelect.value;
       loadMonth();
     });
 
-    document.getElementById('showMonthBtn').addEventListener('click', async () => {
-      state.year = Number(yearSelect.value);
-      state.month = Number(monthSelect.value);
-      await loadMonth();
+    // Nút tháng hiện tại
+    $('todayBtn').addEventListener('click', () => {
+      const n = new Date();
+      state.year = n.getFullYear();
+      state.month = n.getMonth() + 1;
+      yearSelect.value = state.year;
+      monthSelect.value = state.month;
+      loadMonth();
     });
 
-    document.getElementById('clearMonthBtn').addEventListener('click', async () => {
-      const confirmed = window.confirm('Xóa toàn bộ dữ liệu livestream của tháng này?');
-      if (!confirmed) return;
-      state.year = Number(yearSelect.value);
-      state.month = Number(monthSelect.value);
-      state.days = buildMonthDays(state.year, state.month);
-      await saveMonth();
+    // Nút lưu thủ công
+    $('saveBtn').addEventListener('click', () => {
+      saveToStorage();
+      showSaveStatus('Đã lưu thủ công lúc ' + new Date().toLocaleTimeString('vi-VN'));
+    });
+
+    // Xóa tháng
+    $('clearMonthBtn').addEventListener('click', () => {
+      if (!confirm('Bạn có chắc chắn muốn xóa toàn bộ dữ liệu livestream của tháng này không?')) return;
+      state.days = createEmptyDays(state.year, state.month);
+      saveToStorage();
       render();
+      showSaveStatus('Đã xóa dữ liệu tháng');
     });
 
-    document.getElementById('clearAllBtn').addEventListener('click', async () => {
-      if (!confirm('Xóa TOÀN BỘ dữ liệu mọi tháng?\nKhông thể hoàn tác!')) return;
-      if (!confirm('Chắc chắn xóa?')) return;
-      showLoading();
-      try {
-        const snapshot = await db.collection('livestream').get();
-        const batch = db.batch();
-        snapshot.forEach((doc) => batch.delete(doc.ref));
-        await batch.commit();
-      } catch (error) { console.error(error); }
-      state.days = buildMonthDays(state.year, state.month);
-      await saveMonth();
-      hideLoading();
-      render();
-    });
+    // Xuất CSV
+    $('exportCsvBtn').addEventListener('click', exportCsv);
 
-    document.getElementById('exportCsvBtn').addEventListener('click', exportCsv);
-    document.getElementById('exportJsonBtn').addEventListener('click', exportJson);
-    document.getElementById('importJsonBtn').addEventListener('click', () => importFileInput.click());
-    importFileInput.addEventListener('change', handleImportJson);
+    // Sao lưu JSON
+    $('backupJsonBtn').addEventListener('click', backupJson);
 
-    daysTableBody.addEventListener('click', handleTableClick);
-    daysTableBody.addEventListener('input', handleTableInput);
+    // Khôi phục JSON
+    $('restoreJsonBtn').addEventListener('click', () => restoreFileInput.click());
+    restoreFileInput.addEventListener('change', restoreJson);
+
+    // Delegate events trên tbody
+    tbody.addEventListener('click', onTableClick);
+    tbody.addEventListener('input', onTableInput);
+    tbody.addEventListener('blur', onTableBlur, true);
   }
 
-  function getDocId(year, month) {
-    return `${year}_${String(month).padStart(2, '0')}`;
+  // ===== STORAGE =====
+  function storageKey(y, m) {
+    return STORAGE_PREFIX + y + '_' + String(m).padStart(2, '0');
   }
 
-  async function loadMonth() {
-    showLoading();
+  function saveToStorage() {
     try {
-      const docRef = db.collection('livestream').doc(getDocId(state.year, state.month));
-      const doc = await docRef.get();
-      const savedDays = doc.exists && Array.isArray(doc.data().days)
-        ? doc.data().days.map(normalizeDay)
-        : [];
-
-      const allDays = buildMonthDays(state.year, state.month);
-      const savedMap = new Map(savedDays.map((d) => [d.date, d]));
-
-      state.days = allDays.map((d) => savedMap.has(d.date) ? savedMap.get(d.date) : d);
-
-      await saveMonth();
-    } catch (error) {
-      console.error('Lỗi khi đọc dữ liệu từ Firebase:', error);
-      state.days = buildMonthDays(state.year, state.month);
+      localStorage.setItem(storageKey(state.year, state.month), JSON.stringify(state.days));
+    } catch (e) {
+      console.error('Lỗi lưu dữ liệu:', e);
+      showSaveStatus('Có lỗi khi lưu dữ liệu');
     }
-    hideLoading();
+  }
+
+  function loadFromStorage(y, m) {
+    try {
+      const raw = localStorage.getItem(storageKey(y, m));
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed : null;
+    } catch {
+      return null;
+    }
+  }
+
+  // ===== LOAD MONTH =====
+  function loadMonth() {
+    const saved = loadFromStorage(state.year, state.month);
+    if (saved && saved.length > 0) {
+      // Dùng dữ cũ, nhưng bổ sung ngày thiếu nếu số lượng chưa đủ
+      const fullDays = createEmptyDays(state.year, state.month);
+      const savedMap = new Map(saved.map(d => [d.date, d]));
+      state.days = fullDays.map(d => savedMap.has(d.date) ? mergeDay(d, savedMap.get(d.date)) : d);
+    } else {
+      state.days = createEmptyDays(state.year, state.month);
+    }
+    saveToStorage();
     render();
+    showSaveStatus('Đã tải dữ liệu');
   }
 
-  async function saveMonth() {
-    try {
-      const docRef = db.collection('livestream').doc(getDocId(state.year, state.month));
-      await docRef.set({
-        year: state.year,
-        month: state.month,
-        days: state.days
-      });
-    } catch (error) {
-      console.error('Lỗi khi lưu dữ liệu lên Firebase:', error);
-    }
-  }
-
-  function buildMonthDays(year, month) {
-    const daysInMonth = getDaysInMonth(year, month);
+  // ===== CREATE EMPTY DAYS =====
+  function createEmptyDays(y, m) {
+    const total = new Date(y, m, 0).getDate();
     const days = [];
-    for (let day = 1; day <= daysInMonth; day += 1) {
-      const date = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    for (let d = 1; d <= total; d++) {
+      const date = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
       days.push({
         date,
         sessions: [{ id: `${date}-1`, label: 'Ca 1', value: '' }]
@@ -160,323 +161,338 @@ document.addEventListener('DOMContentLoaded', () => {
     return days;
   }
 
-  function normalizeDay(day) {
-    return {
-      date: day.date,
-      sessions: Array.isArray(day.sessions)
-        ? day.sessions.map((session, index) => ({
-            id: session.id || `${day.date}-${index + 1}`,
-            label: session.label || `Ca ${index + 1}`,
-            value: session.value || ''
-          }))
-        : [{ id: `${day.date}-1`, label: 'Ca 1', value: '' }]
-    };
+  // ===== MERGE: giữ data cũ, bổ sung ngày mới =====
+  function mergeDay(empty, saved) {
+    const sessions = (Array.isArray(saved.sessions) && saved.sessions.length > 0)
+      ? saved.sessions.map((s, i) => ({
+          id: s.id || `${empty.date}-${i + 1}`,
+          label: s.label || `Ca ${i + 1}`,
+          value: s.value || ''
+        }))
+      : [{ id: `${empty.date}-1`, label: 'Ca 1', value: '' }];
+    return { date: empty.date, sessions };
   }
 
-  function normalizeSessions(sessions) {
-    if (!Array.isArray(sessions) || sessions.length === 0) {
-      return [{ id: `${Date.now()}-1`, label: 'Ca 1', value: '' }];
+  // ===== PARSE LIVE DURATION =====
+  function parseLiveDuration(value) {
+    if (typeof value !== 'string') return { valid: false, minutes: 0, normalized: '' };
+    const cleaned = value.trim().replace(/\s+/g, '').toLowerCase();
+    if (cleaned === '') return { valid: false, minutes: 0, normalized: '' }; // rỗng = chưa nhập
+    const match = cleaned.match(/^(\d+)h(\d{1,2})$/i);
+    if (!match) return { valid: false, minutes: 0, normalized: '' };
+    const hours = Number(match[1]);
+    const mins = Number(match[2]);
+    if (mins > 59) return { valid: false, minutes: 0, normalized: '' };
+    const normalized = `${hours}h${String(mins).padStart(2, '0')}`;
+    return { valid: true, minutes: hours * 60 + mins, normalized };
+  }
+
+  // ===== FORMAT MINUTES =====
+  function formatMinutes(total) {
+    const h = Math.floor(total / 60);
+    const m = total % 60;
+    return `${h} giờ ${m} phút`;
+  }
+
+  // ===== SUMMARIZE DAY =====
+  function summarizeDay(day) {
+    let count = 0, mins = 0;
+    for (const s of day.sessions) {
+      const r = parseLiveDuration(s.value);
+      if (r.valid) { count++; mins += r.minutes; }
     }
-    return sessions.map((s, i) => ({
-      id: s.id || `${Date.now()}-${i + 1}`,
-      label: `Ca ${i + 1}`,
-      value: s.value || ''
-    }));
+    return { count, mins, text: formatMinutes(mins) };
   }
 
+  // ===== SUMMARIZE MONTH =====
+  function summarizeMonth() {
+    let totalMins = 0, totalCount = 0, dayCount = 0;
+    for (const day of state.days) {
+      const s = summarizeDay(day);
+      if (s.count > 0) dayCount++;
+      totalMins += s.mins;
+      totalCount += s.count;
+    }
+    return { dayCount, totalCount, totalMins, totalText: formatMinutes(totalMins) };
+  }
+
+  // ===== RENDER =====
   function render() {
     renderTable();
     renderSummary();
   }
 
   function renderTable() {
-    if (state.days.length === 0) {
-      daysTableBody.innerHTML = '<tr><td colspan="7">Chọn tháng và nhấn "Hiển thị tháng" để bắt đầu.</td></tr>';
-      return;
-    }
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
-    const rows = state.days.map((day, dayIndex) => {
-      const summary = summarizeDay(day);
-      const sessionsMarkup = day.sessions.map((session) => {
-        const parseResult = parseLiveDuration(session.value);
-        const valid = parseResult.valid || session.value.trim() === '';
+    tbody.innerHTML = state.days.map((day, i) => {
+      const sum = summarizeDay(day);
+      const isToday = day.date === todayStr;
+      const sessionsHtml = day.sessions.map(s => {
+        const r = parseLiveDuration(s.value);
+        const isValid = r.valid;
+        const isEmpty = s.value.trim() === '';
+        const inputClass = isEmpty ? '' : (isValid ? '' : ' invalid');
+        const errorMsg = (!isValid && !isEmpty) ? '<div class="session-error">Sai định dạng. Vui lòng nhập theo dạng 2h15.</div>' : '';
         return `
-          <div class="live-item">
-            <span class="live-label">${escapeHtml(session.label)}</span>
-            <input
-              type="text"
-              class="live-input${valid ? '' : ' input-invalid'}"
-              data-action="edit-session"
-              data-day-index="${dayIndex}"
-              data-session-id="${session.id}"
-              value="${escapeHtml(session.value)}"
-              placeholder="2h15"
-            />
-            <button type="button" class="icon-btn" data-action="remove-session" data-day-index="${dayIndex}" data-session-id="${session.id}">&times;</button>
-          </div>`;
+          <div class="session-item">
+            <span class="session-label">${esc(s.label)}</span>
+            <input type="text" class="session-input${inputClass}"
+              data-di="${i}" data-sid="${s.id}"
+              value="${esc(s.value)}" placeholder="Ví dụ: 2h15" />
+            <button type="button" class="btn-icon" data-a="rm-session" data-di="${i}" data-sid="${s.id}">&times;</button>
+          </div>
+          ${errorMsg}`;
       }).join('');
 
+      const [y, m, d] = day.date.split('-');
+      const displayDate = `${d}/${m}/${y}`;
+
       return `
-        <tr>
-          <td class="col-stt">${dayIndex + 1}</td>
-          <td class="day-date">${formatDate(day.date)}</td>
-          <td>
-            <div class="live-stack">${sessionsMarkup}</div>
+        <tr class="${isToday ? 'today' : ''}">
+          <td>${i + 1}</td>
+          <td class="day-date">${displayDate}</td>
+          <td class="c-sessions">
+            <div class="session-stack">${sessionsHtml}</div>
           </td>
-          <td class="col-count">${summary.validCount}</td>
-          <td class="col-minutes">${summary.totalMinutes}</td>
-          <td>${summary.totalTime}</td>
+          <td>${sum.count}</td>
+          <td>${sum.mins}</td>
+          <td>${sum.text}</td>
           <td>
-            <div class="day-actions">
-              <button type="button" class="btn-primary" data-action="add-session" data-day-index="${dayIndex}">+ Ca</button>
-              <button type="button" class="btn-danger" data-action="remove-day" data-day-index="${dayIndex}">&times;</button>
+            <div class="row-actions">
+              <button type="button" class="btn-add" data-a="add-session" data-di="${i}">Thêm ca live</button>
+              <button type="button" class="btn-del-day" data-a="clear-day" data-di="${i}">Xóa ngày</button>
             </div>
           </td>
         </tr>`;
-    });
-
-    daysTableBody.innerHTML = rows.join('');
+    }).join('');
   }
 
   function renderSummary() {
-    const summary = summarizeMonth(state.days);
-    summarySection.innerHTML = `
+    const s = summarizeMonth();
+    summaryEl.innerHTML = `
       <h2>TỔNG KẾT THÁNG ${String(state.month).padStart(2, '0')}/${state.year}</h2>
       <div class="summary-grid">
-        <div class="summary-card">
-          <span>Ngày có livestream</span>
-          <strong>${summary.dayCount} ngày</strong>
-        </div>
-        <div class="summary-card">
-          <span>Tổng ca livestream</span>
-          <strong>${summary.validSessionCount} ca</strong>
-        </div>
-        <div class="summary-card">
-          <span>Tổng phút livestream</span>
-          <strong>${summary.totalMinutes} phút</strong>
-        </div>
-        <div class="summary-card">
-          <span>Tổng thời gian</span>
-          <strong>${summary.totalTime}</strong>
-        </div>
+        <div class="summary-item"><div class="label">Số ngày có livestream</div><div class="value">${s.dayCount} ngày</div></div>
+        <div class="summary-item"><div class="label">Tổng số ca livestream</div><div class="value">${s.totalCount} ca</div></div>
+        <div class="summary-item"><div class="label">Tổng số phút livestream</div><div class="value">${s.totalMins} phút</div></div>
+        <div class="summary-item"><div class="label">Tổng thời gian livestream</div><div class="value">${s.totalText}</div></div>
       </div>`;
   }
 
-  function summarizeDay(day) {
-    let validCount = 0;
-    let totalMinutes = 0;
-    day.sessions.forEach((session) => {
-      const result = parseLiveDuration(session.value);
-      if (result.valid) {
-        validCount += 1;
-        totalMinutes += result.totalMinutes;
+  // ===== UPDATE SINGLE ROW (không render lại toàn bộ bảng) =====
+  function updateRow(dayIndex) {
+    const row = tbody.rows[dayIndex];
+    if (!row) return;
+    const day = state.days[dayIndex];
+    const sum = summarizeDay(day);
+    row.cells[3].textContent = sum.count;
+    row.cells[4].textContent = sum.mins;
+    row.cells[5].textContent = sum.text;
+  }
+
+  // ===== TABLE EVENTS =====
+  function onTableClick(e) {
+    const btn = e.target.closest('button');
+    if (!btn) return;
+    const a = btn.dataset.a;
+    const di = +btn.dataset.di;
+
+    if (a === 'add-session') {
+      const day = state.days[di];
+      if (!day) return;
+      const n = day.sessions.length + 1;
+      day.sessions.push({ id: `${day.date}-${n}`, label: `Ca ${n}`, value: '' });
+      saveToStorage();
+      render(); // Render lại khi thêm/xóa để cập nhật DOM
+      showSaveStatus('Đã lưu lúc ' + new Date().toLocaleTimeString('vi-VN'));
+    }
+
+    if (a === 'rm-session') {
+      const sid = btn.dataset.sid;
+      const day = state.days[di];
+      if (!day) return;
+      if (!confirm('Bạn có chắc chắn muốn xóa ca livestream này không?')) return;
+      day.sessions = day.sessions.filter(s => s.id !== sid);
+      // Đánh lại label
+      day.sessions.forEach((s, i) => { s.label = `Ca ${i + 1}`; });
+      if (day.sessions.length === 0) {
+        day.sessions.push({ id: `${day.date}-1`, label: 'Ca 1', value: '' });
       }
-    });
-    return {
-      validCount,
-      totalMinutes,
-      totalTime: formatMinutes(totalMinutes)
-    };
-  }
+      saveToStorage();
+      render();
+      showSaveStatus('Đã lưu lúc ' + new Date().toLocaleTimeString('vi-VN'));
+    }
 
-  function summarizeMonth(days) {
-    let totalMinutes = 0;
-    let validSessionCount = 0;
-    let dayCount = 0;
-    days.forEach((day) => {
-      const summary = summarizeDay(day);
-      if (summary.validCount > 0) dayCount += 1;
-      totalMinutes += summary.totalMinutes;
-      validSessionCount += summary.validCount;
-    });
-    return {
-      dayCount,
-      validSessionCount,
-      totalMinutes,
-      totalTime: formatMinutes(totalMinutes)
-    };
-  }
-
-  function parseLiveDuration(value) {
-    if (typeof value !== 'string') return { valid: false, totalMinutes: null, normalized: '' };
-    const trimmed = value.trim();
-    if (trimmed === '') return { valid: false, totalMinutes: null, normalized: '' };
-    const cleaned = trimmed.replace(/\s+/g, '').toLowerCase();
-    const match = cleaned.match(/^(\d+)h(\d{1,2})$/i);
-    if (!match) return { valid: false, totalMinutes: null, normalized: '' };
-    const hours = Number(match[1]);
-    const minutes = Number(match[2]);
-    if (minutes > 59) return { valid: false, totalMinutes: null, normalized: '' };
-    const normalized = `${hours}h${String(minutes).padStart(2, '0')}`;
-    return { valid: true, totalMinutes: hours * 60 + minutes, normalized };
-  }
-
-  function formatMinutes(totalMinutes) {
-    const hours = Math.floor(totalMinutes / 60);
-    const minutes = totalMinutes % 60;
-    return `${hours}g ${minutes}p`;
-  }
-
-  function formatDate(dateString) {
-    const [year, month, day] = dateString.split('-').map(Number);
-    return `${String(day).padStart(2, '0')}/${String(month).padStart(2, '0')}`;
-  }
-
-  async function handleTableClick(event) {
-    const button = event.target.closest('button');
-    if (!button) return;
-
-    const { action, dayIndex, sessionId } = button.dataset;
-
-    if (action === 'add-session') {
-      const day = state.days[Number(dayIndex)];
+    if (a === 'clear-day') {
+      const day = state.days[di];
       if (!day) return;
-      day.sessions.push({
-        id: `${day.date}-${day.sessions.length + 1}`,
-        label: `Ca ${day.sessions.length + 1}`,
-        value: ''
-      });
-      await saveMonth();
+      if (!confirm('Bạn có chắc chắn muốn xóa toàn bộ các ca livestream của ngày này không?')) return;
+      day.sessions = [{ id: `${day.date}-1`, label: 'Ca 1', value: '' }];
+      saveToStorage();
       render();
-      return;
-    }
-
-    if (action === 'remove-session') {
-      const day = state.days[Number(dayIndex)];
-      if (!day) return;
-      day.sessions = day.sessions.filter((s) => s.id !== sessionId);
-      day.sessions = normalizeSessions(day.sessions);
-      await saveMonth();
-      render();
-      return;
-    }
-
-    if (action === 'remove-day') {
-      state.days.splice(Number(dayIndex), 1);
-      await saveMonth();
-      render();
+      showSaveStatus('Đã lưu lúc ' + new Date().toLocaleTimeString('vi-VN'));
     }
   }
 
-  async function handleTableInput(event) {
-    const input = event.target;
-    if (input.dataset.action !== 'edit-session') return;
-
-    const dayIndex = Number(input.dataset.dayIndex);
-    const sessionId = input.dataset.sessionId;
-    const session = state.days[dayIndex]?.sessions.find((s) => s.id === sessionId);
+  // input: chỉ cập nhật data + validate, KHÔNG render lại bảng
+  function onTableInput(e) {
+    const input = e.target;
+    if (!input.dataset.sid) return;
+    const di = +input.dataset.di;
+    const session = state.days[di]?.sessions.find(s => s.id === input.dataset.sid);
     if (!session) return;
 
     session.value = input.value;
 
-    const parseResult = parseLiveDuration(session.value);
-    if (parseResult.valid || session.value.trim() === '') {
-      input.classList.remove('input-invalid');
+    // Validate realtime
+    const r = parseLiveDuration(session.value);
+    const isEmpty = session.value.trim() === '';
+    if (isEmpty || r.valid) {
+      input.classList.remove('invalid');
+      // Xóa thông báo lỗi nếu có
+      const errEl = input.parentElement.nextElementSibling;
+      if (errEl && errEl.classList.contains('session-error')) errEl.remove();
     } else {
-      input.classList.add('input-invalid');
+      input.classList.add('invalid');
+      // Thêm thông báo lỗi nếu chưa có
+      if (!input.parentElement.nextElementSibling?.classList.contains('session-error')) {
+        const err = document.createElement('div');
+        err.className = 'session-error';
+        err.textContent = 'Sai định dạng. Vui lòng nhập theo dạng 2h15.';
+        input.parentElement.after(err);
+      }
     }
 
-    await saveMonth();
+    // Cập nhật tổng ngày (không render lại bảng)
+    updateRow(di);
+    // Cập nhật tổng tháng
     renderSummary();
-    updateDaySummaryCell(dayIndex);
+    // Lưu
+    saveToStorage();
   }
 
-  function updateDaySummaryCell(dayIndex) {
-    const row = daysTableBody.rows[dayIndex];
-    if (!row) return;
-    const summary = summarizeDay(state.days[dayIndex]);
-    row.cells[3].textContent = summary.validCount;
-    row.cells[4].textContent = summary.totalMinutes;
-    row.cells[5].textContent = summary.totalTime;
+  // blur: chuẩn hóa giá trị
+  function onTableBlur(e) {
+    const input = e.target;
+    if (!input.dataset.sid) return;
+    const di = +input.dataset.di;
+    const session = state.days[di]?.sessions.find(s => s.id === input.dataset.sid);
+    if (!session) return;
+
+    const r = parseLiveDuration(session.value);
+    if (r.valid && session.value !== r.normalized) {
+      // Chuẩn hóa: 2 H 15 → 2h15
+      session.value = r.normalized;
+      input.value = r.normalized;
+      input.classList.remove('invalid');
+      const errEl = input.parentElement.nextElementSibling;
+      if (errEl && errEl.classList.contains('session-error')) errEl.remove();
+      updateRow(di);
+      renderSummary();
+      saveToStorage();
+      showSaveStatus('Đã lưu lúc ' + new Date().toLocaleTimeString('vi-VN'));
+    }
   }
 
+  // ===== EXPORT CSV =====
   function exportCsv() {
-    const rows = [['STT', 'Ngày', 'Ca', 'Thời lượng', 'Phút', 'Tổng phút ngày', 'Tổng thời gian ngày']];
-    state.days.forEach((day, dayIndex) => {
+    const rows = [['STT', 'Ngày', 'Tên ca', 'Thời lượng', 'Số phút', 'Tổng ca ngày', 'Tổng phút ngày', 'Tổng thời gian ngày']];
+    state.days.forEach((day, i) => {
       const ds = summarizeDay(day);
-      day.sessions.forEach((session) => {
-        const r = parseLiveDuration(session.value);
+      const [, mm, dd] = day.date.split('-');
+      const displayDate = `${dd}/${mm}/${day.date.split('-')[0]}`;
+      day.sessions.forEach(s => {
+        const r = parseLiveDuration(s.value);
         rows.push([
-          dayIndex + 1,
-          formatDate(day.date),
-          session.label,
-          session.value,
-          r.valid ? r.totalMinutes : '',
-          ds.validCount > 0 ? ds.totalMinutes : '',
-          ds.validCount > 0 ? ds.totalTime : ''
+          i + 1, displayDate, s.label, s.value,
+          r.valid ? r.minutes : '',
+          ds.count, ds.mins, ds.text
         ]);
       });
     });
-    const csv = rows.map((row) => row.map(escapeCsvValue).join(',')).join('\n');
-    downloadFile(`livestream_${state.year}_${String(state.month).padStart(2, '0')}.csv`, `﻿${csv}`);
+    const csv = rows.map(r => r.map(csvEscape).join(',')).join('\n');
+    download(`livestream-thang-${String(state.month).padStart(2, '0')}-${state.year}.csv`, '﻿' + csv);
   }
 
-  function exportJson() {
-    const payload = {
-      exportedAt: new Date().toISOString(),
-      year: state.year,
-      month: state.month,
-      days: state.days
-    };
-    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `livestream_${state.year}_${String(state.month).padStart(2, '0')}.json`;
-    link.click();
-    URL.revokeObjectURL(url);
+  // ===== BACKUP JSON (toàn bộ localStorage) =====
+  function backupJson() {
+    const data = {};
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key.startsWith(STORAGE_PREFIX)) {
+        try { data[key] = JSON.parse(localStorage.getItem(key)); }
+        catch { data[key] = localStorage.getItem(key); }
+      }
+    }
+    const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `livestream-backup-${dateStr}.json`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+    showSaveStatus('Đã sao lưu JSON');
   }
 
-  async function handleImportJson(event) {
-    const file = event.target.files?.[0];
+  // ===== RESTORE JSON =====
+  function restoreJson(e) {
+    const file = e.target.files?.[0];
     if (!file) return;
-    const confirmed = window.confirm('Ghi đè dữ liệu hiện tại bằng file JSON?');
-    if (!confirmed) { event.target.value = ''; return; }
-
+    if (!confirm('Bạn có chắc chắn muốn khôi phục dữ liệu từ file JSON này không?\nDữ liệu hiện tại sẽ bị ghi đè.')) {
+      e.target.value = '';
+      return;
+    }
     const reader = new FileReader();
-    reader.onload = async () => {
+    reader.onload = () => {
       try {
-        const payload = JSON.parse(reader.result);
-        if (payload.days && Array.isArray(payload.days)) {
-          state.days = payload.days.map(normalizeDay);
-          if (payload.year) state.year = payload.year;
-          if (payload.month) state.month = payload.month;
-          yearSelect.value = String(state.year);
-          monthSelect.value = String(state.month);
+        const data = JSON.parse(reader.result);
+        if (typeof data !== 'object' || data === null) throw new Error();
+        // Kiểm tra cấu trúc: mỗi key phải bắt đầu bằng STORAGE_PREFIX
+        const validKeys = Object.keys(data).filter(k => k.startsWith(STORAGE_PREFIX));
+        if (validKeys.length === 0) { alert('File không hợp lệ hoặc không có dữ liệu livestream.'); return; }
+        // Xóa dữ liệu cũ
+        const keysToRemove = [];
+        for (let i = 0; i < localStorage.length; i++) {
+          const k = localStorage.key(i);
+          if (k.startsWith(STORAGE_PREFIX)) keysToRemove.push(k);
         }
-        await saveMonth();
-        render();
-      } catch (error) {
-        window.alert('File JSON không hợp lệ.');
+        keysToRemove.forEach(k => localStorage.removeItem(k));
+        // Ghi dữ liệu mới
+        validKeys.forEach(k => {
+          localStorage.setItem(k, JSON.stringify(data[k]));
+        });
+        // Tải lại tháng hiện tại
+        loadMonth();
+        showSaveStatus('Đã khôi phục dữ liệu thành công');
+      } catch {
+        alert('File JSON không hợp lệ.');
       }
     };
     reader.readAsText(file, 'utf-8');
-    event.target.value = '';
+    e.target.value = '';
   }
 
-  function downloadFile(fileName, content) {
-    const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = fileName;
-    link.click();
-    URL.revokeObjectURL(url);
+  // ===== UTILS =====
+  function esc(v) {
+    return String(v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+  function csvEscape(v) {
+    const s = String(v ?? '');
+    return (s.includes(',') || s.includes('"') || s.includes('\n')) ? `"${s.replace(/"/g, '""')}"` : s;
+  }
+  function download(name, content) {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([content], { type: 'text/csv;charset=utf-8;' }));
+    a.download = name;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+  function showSaveStatus(msg) {
+    saveStatusEl.textContent = msg;
   }
 
-  function escapeCsvValue(value) {
-    const s = String(value ?? '');
-    if (s.includes(',') || s.includes('"') || s.includes('\n')) return `"${s.replace(/"/g, '""')}"`;
-    return s;
-  }
-
-  function escapeHtml(value) {
-    return String(value).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-  }
-
-  function getDaysInMonth(year, month) {
-    return new Date(year, month, 0).getDate();
-  }
-
+  // ===== START =====
   init();
 });

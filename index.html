@@ -1,75 +1,68 @@
 <!DOCTYPE html>
 <html lang="vi">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Quản lý thời gian livestream</title>
-    <link rel="stylesheet" href="style.css" />
-  </head>
-  <body>
-    <div class="app-shell">
-      <header class="hero">
-        <h1>QUẢN LÝ THỜI GIAN LIVESTREAM</h1>
-        <p>Ghi nhận, tính tổng và lưu trữ thời gian livestream theo từng ngày trong tháng.</p>
-      </header>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Quản lý thời gian livestream</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app">
+    <!-- Tiêu đề -->
+    <header class="header">
+      <h1>QUẢN LÝ THỜI GIAN LIVESTREAM</h1>
+      <div class="save-status" id="saveStatus"></div>
+    </header>
 
-      <section class="controls card">
-        <div class="loading-overlay" id="loadingOverlay">
-          <div class="loading-spinner"></div>
-          <span>Đang tải dữ liệu...</span>
-        </div>
-        <div class="control-grid">
+    <!-- Khu vực điều khiển -->
+    <section class="controls card">
+      <div class="controls-row">
+        <div class="controls-left">
           <label class="field">
             <span>Tháng</span>
             <select id="monthSelect"></select>
           </label>
-
           <label class="field">
             <span>Năm</span>
             <select id="yearSelect"></select>
           </label>
-
-          <div class="button-group">
-            <button id="showMonthBtn" type="button">Hiển thị tháng</button>
-            <button id="clearMonthBtn" type="button" class="btn-danger">Xóa dữ liệu tháng</button>
-            <button id="clearAllBtn" type="button" class="btn-danger">Xóa tất cả</button>
-          </div>
-
-          <div class="button-group export-group">
-            <button id="exportCsvBtn" type="button">Xuất file CSV</button>
-            <button id="exportJsonBtn" type="button">Sao lưu JSON</button>
-            <button id="importJsonBtn" type="button">Nhập file JSON</button>
-          </div>
+          <button id="todayBtn" type="button" class="btn-accent">Tháng hiện tại</button>
         </div>
-
-        <input id="importFileInput" type="file" accept="application/json" hidden />
-      </section>
-
-      <section class="table-card card">
-        <div class="table-wrapper">
-          <table>
-            <thead>
-              <tr>
-                <th class="col-stt">STT</th>
-                <th class="col-date">Ngày</th>
-                <th class="col-sessions">Các ca livestream</th>
-                <th class="col-count">Số ca</th>
-                <th class="col-minutes">Phút</th>
-                <th class="col-total">Tổng thời gian</th>
-                <th class="col-actions">Thao tác</th>
-              </tr>
-            </thead>
-            <tbody id="daysTableBody"></tbody>
-          </table>
+        <div class="controls-right">
+          <button id="saveBtn" type="button" class="btn-accent">Lưu dữ liệu</button>
+          <button id="exportCsvBtn" type="button">Xuất CSV</button>
+          <button id="backupJsonBtn" type="button">Sao lưu JSON</button>
+          <button id="restoreJsonBtn" type="button">Khôi phục JSON</button>
+          <button id="clearMonthBtn" type="button" class="btn-danger">Xóa dữ liệu tháng</button>
         </div>
-      </section>
+      </div>
+      <input id="restoreFileInput" type="file" accept="application/json" hidden />
+    </section>
 
-      <section class="summary card" id="summarySection"></section>
-    </div>
+    <!-- Bảng dữ liệu -->
+    <section class="table-card card">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th class="c-stt">STT</th>
+              <th class="c-date">Ngày</th>
+              <th class="c-sessions">Các ca livestream</th>
+              <th class="c-count">Tổng số ca</th>
+              <th class="c-minutes">Tổng số phút</th>
+              <th class="c-total">Tổng thời gian</th>
+              <th class="c-actions">Thao tác</th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+    </section>
 
-    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-    <script src="firebase-config.js"></script>
-    <script src="script.js"></script>
-  </body>
+    <!-- Tổng kết tháng -->
+    <section class="summary card" id="summary"></section>
+  </div>
+
+  <script src="script.js"></script>
+</body>
 </html>
