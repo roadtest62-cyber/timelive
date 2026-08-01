@@ -145,7 +145,8 @@ table {
   width: 100%;
   border-collapse: collapse;
   min-width: 820px;
-  font-size: 0.85rem;
+  font-size: 0.9rem;
+  text-transform: uppercase;
 }
 thead {
   position: sticky;
@@ -198,29 +199,29 @@ tbody tr.today { background: #e0e7ff; font-weight: 600; }
 .session-item {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   background: #f8f9ff;
   border: 1.5px solid var(--border-light);
   border-radius: 8px;
-  padding: 5px 8px;
+  padding: 3px 6px;
 }
 .session-label {
   font-weight: 700;
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   color: var(--accent);
-  min-width: 40px;
+  min-width: 36px;
   white-space: nowrap;
 }
 
-/* Ô nhập giờ — to, rõ, dễ bấm */
+/* Ô nhập giờ — gọn vừa phải */
 .session-input {
-  flex: 1;
-  min-width: 90px;
-  max-width: 150px;
-  padding: 8px 10px;
+  flex: 0 1 80px;
+  min-width: 70px;
+  max-width: 90px;
+  padding: 5px 6px;
   border: 2px solid var(--border);
   border-radius: 8px;
-  font-size: 1rem;
+  font-size: 0.88rem;
   font-weight: 700;
   text-align: center;
   color: var(--text);
@@ -307,16 +308,18 @@ tbody tr.today { background: #e0e7ff; font-weight: 600; }
   text-align: center;
 }
 .summary-item .label {
-  font-size: 0.7rem;
+  font-size: 0.72rem;
   font-weight: 600;
   color: var(--muted);
   text-transform: uppercase;
+  letter-spacing: 0.02em;
 }
 .summary-item .value {
   font-size: 1.05rem;
   font-weight: 800;
   color: var(--accent);
   margin-top: 2px;
+  text-transform: uppercase;
 }
 
 /* ===================================================================
@@ -377,7 +380,7 @@ tbody tr.today { background: #e0e7ff; font-weight: 600; }
   .session-item {
     flex-wrap: wrap;
     gap: 4px;
-    padding: 6px 8px;
+    padding: 5px 8px;
   }
   .session-label {
     font-size: 0.78rem;
@@ -387,12 +390,12 @@ tbody tr.today { background: #e0e7ff; font-weight: 600; }
     flex: 1 1 100%;
     min-width: 0;
     max-width: none;
-    padding: 10px 12px;
-    font-size: 1.05rem;
+    padding: 8px 10px;
+    font-size: 0.95rem;
     border-radius: 8px;
   }
   .session-input::placeholder {
-    font-size: 0.9rem;
+    font-size: 0.85rem;
   }
   .btn-icon {
     width: 32px;
