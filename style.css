@@ -144,9 +144,10 @@ button:active { transform: scale(0.97); }
 table {
   width: 100%;
   border-collapse: collapse;
-  min-width: 820px;
+  min-width: 700px;
   font-size: 0.9rem;
   text-transform: uppercase;
+  table-layout: fixed;
 }
 thead {
   position: sticky;
@@ -179,11 +180,11 @@ tbody tr.today { background: #e0e7ff; font-weight: 600; }
 /* Cột宽 */
 .c-stt { width: 32px; }
 .c-date { width: 68px; white-space: nowrap; }
-.c-sessions { min-width: 200px; text-align: left; }
-.c-count { width: 44px; }
-.c-minutes { width: 50px; }
+.c-sessions { width: 160px; text-align: left; }
+.c-count { width: 50px; }
+.c-minutes { width: 55px; }
 .c-total { width: 90px; }
-.c-actions { width: 130px; white-space: nowrap; }
+.c-actions { width: 120px; white-space: nowrap; }
 
 .day-date {
   font-weight: 700;
