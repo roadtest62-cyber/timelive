@@ -54,6 +54,18 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function bindEvents() {
+    monthSelect.addEventListener('change', () => {
+      state.year = Number(yearSelect.value);
+      state.month = Number(monthSelect.value);
+      loadMonth();
+    });
+
+    yearSelect.addEventListener('change', () => {
+      state.year = Number(yearSelect.value);
+      state.month = Number(monthSelect.value);
+      loadMonth();
+    });
+
     document.getElementById('showMonthBtn').addEventListener('click', async () => {
       state.year = Number(yearSelect.value);
       state.month = Number(monthSelect.value);
@@ -70,6 +82,22 @@ document.addEventListener('DOMContentLoaded', () => {
       render();
     });
 
+    document.getElementById('clearAllBtn').addEventListener('click', async () => {
+      if (!confirm('Xóa TOÀN BỘ dữ liệu mọi tháng?\nKhông thể hoàn tác!')) return;
+      if (!confirm('Chắc chắn xóa?')) return;
+      showLoading();
+      try {
+        const snapshot = await db.collection('livestream').get();
+        const batch = db.batch();
+        snapshot.forEach((doc) => batch.delete(doc.ref));
+        await batch.commit();
+      } catch (error) { console.error(error); }
+      state.days = buildMonthDays(state.year, state.month);
+      await saveMonth();
+      hideLoading();
+      render();
+    });
+
     document.getElementById('exportCsvBtn').addEventListener('click', exportCsv);
     document.getElementById('exportJsonBtn').addEventListener('click', exportJson);
     document.getElementById('importJsonBtn').addEventListener('click', () => importFileInput.click());
@@ -77,7 +105,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     daysTableBody.addEventListener('click', handleTableClick);
     daysTableBody.addEventListener('input', handleTableInput);
-    daysTableBody.addEventListener('blur', handleTableBlur, true);
   }
 
   function getDocId(year, month) {
@@ -343,36 +370,15 @@ document.addEventListener('DOMContentLoaded', () => {
     session.value = input.value;
 
     const parseResult = parseLiveDuration(session.value);
-    if (parseResult.valid) {
-      input.classList.remove('input-invalid');
-    } else if (session.value.trim() === '') {
+    if (parseResult.valid || session.value.trim() === '') {
       input.classList.remove('input-invalid');
     } else {
       input.classList.add('input-invalid');
     }
 
-    saveMonth();
+    await saveMonth();
     renderSummary();
     updateDaySummaryCell(dayIndex);
-  }
-
-  async function handleTableBlur(event) {
-    const input = event.target;
-    if (input.dataset.action !== 'edit-session') return;
-
-    const dayIndex = Number(input.dataset.dayIndex);
-    const sessionId = input.dataset.sessionId;
-    const session = state.days[dayIndex]?.sessions.find((s) => s.id === sessionId);
-    if (!session) return;
-
-    const parseResult = parseLiveDuration(session.value);
-    if (parseResult.valid && session.value !== parseResult.normalized) {
-      session.value = parseResult.normalized;
-      input.value = parseResult.normalized;
-      await saveMonth();
-      renderSummary();
-      updateDaySummaryCell(dayIndex);
-    }
   }
 
   function updateDaySummaryCell(dayIndex) {
