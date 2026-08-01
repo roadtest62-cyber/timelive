@@ -86,6 +86,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     daysTableBody.addEventListener('click', handleTableClick);
     daysTableBody.addEventListener('input', handleTableInput);
+    daysTableBody.addEventListener('blur', handleTableBlur, true);
   }
 
   function getDocId(year, month) {
@@ -405,8 +406,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const parseResult = parseLiveDuration(session.value);
     if (parseResult.valid) {
-      session.value = parseResult.normalized;
-      input.value = parseResult.normalized;
       input.classList.remove('input-invalid');
       input.parentElement.querySelector('.input-error').textContent = '';
       input.parentElement.querySelector('.input-error').classList.add('empty');
@@ -420,9 +419,34 @@ document.addEventListener('DOMContentLoaded', () => {
       input.parentElement.querySelector('.input-error').classList.remove('empty');
     }
 
-    await saveMonth();
+    saveMonth();
     renderSummary();
     updateDaySummaryCell(dayIndex);
+  }
+
+  async function handleTableBlur(event) {
+    const input = event.target;
+    if (!input.dataset.action || input.dataset.action !== 'edit-session') {
+      return;
+    }
+
+    const dayIndex = Number(input.dataset.dayIndex);
+    const sessionId = input.dataset.sessionId;
+    const day = state.days[dayIndex];
+    const session = day?.sessions.find((item) => item.id === sessionId);
+
+    if (!session) {
+      return;
+    }
+
+    const parseResult = parseLiveDuration(session.value);
+    if (parseResult.valid && session.value !== parseResult.normalized) {
+      session.value = parseResult.normalized;
+      input.value = parseResult.normalized;
+      await saveMonth();
+      renderSummary();
+      updateDaySummaryCell(dayIndex);
+    }
   }
 
   function updateDaySummaryCell(dayIndex) {
