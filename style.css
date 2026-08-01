@@ -144,10 +144,9 @@ button:active { transform: scale(0.97); }
 table {
   width: 100%;
   border-collapse: collapse;
-  min-width: 700px;
-  font-size: 0.9rem;
+  min-width: 750px;
+  font-size: 0.95rem;
   text-transform: uppercase;
-  table-layout: fixed;
 }
 thead {
   position: sticky;
@@ -158,36 +157,39 @@ thead tr {
   background: var(--accent);
 }
 th {
-  padding: 10px 8px;
+  padding: 12px 10px;
   color: #fff;
   font-weight: 700;
-  font-size: 0.8rem;
+  font-size: 0.85rem;
   text-align: center;
   white-space: nowrap;
+  border-right: 1px solid rgba(255,255,255,0.2);
 }
+th:last-child { border-right: none; }
 td {
-  padding: 8px;
-  border-bottom: 1px solid var(--border-light);
+  padding: 10px 8px;
+  border: 1.5px solid var(--border);
   vertical-align: middle;
   text-align: center;
-  font-weight: 500;
+  font-weight: 600;
+  font-size: 0.9rem;
 }
 tbody tr:nth-child(odd) { background: #fafbff; }
 tbody tr:nth-child(even) { background: #fff; }
 tbody tr:hover { background: #eef2ff; }
-tbody tr.today { background: #e0e7ff; font-weight: 600; }
+tbody tr.today { background: #e0e7ff; font-weight: 700; }
 
-/* Cột宽 */
-.c-stt { width: 32px; }
-.c-date { width: 68px; white-space: nowrap; }
-.c-sessions { width: 160px; text-align: left; }
-.c-count { width: 50px; }
-.c-minutes { width: 55px; }
-.c-total { width: 90px; }
-.c-actions { width: 120px; white-space: nowrap; }
+.c-stt { width: 40px; }
+.c-date { width: 80px; white-space: nowrap; }
+.c-sessions { width: 200px; text-align: center; }
+.c-count { width: 55px; }
+.c-minutes { width: 60px; }
+.c-total { width: 100px; }
+.c-actions { width: 130px; white-space: nowrap; }
 
 .day-date {
-  font-weight: 700;
+  font-weight: 800;
+  font-size: 0.95rem;
   white-space: nowrap;
 }
 
@@ -195,34 +197,33 @@ tbody tr.today { background: #e0e7ff; font-weight: 600; }
 .session-stack {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  align-items: flex-start;
+  gap: 5px;
+  align-items: center;
 }
 .session-item {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  background: #f8f9ff;
-  border: 1.5px solid var(--border-light);
+  gap: 5px;
+  background: #f1f3ff;
+  border: 2px solid var(--accent-light);
   border-radius: 8px;
-  padding: 3px 5px 3px 8px;
+  padding: 4px 6px 4px 8px;
   width: fit-content;
 }
 .session-label {
-  font-weight: 700;
-  font-size: 0.72rem;
+  font-weight: 800;
+  font-size: 0.8rem;
   color: var(--accent);
   white-space: nowrap;
 }
 
-/* Ô nhập giờ — gọn */
 .session-input {
-  width: 68px;
-  padding: 3px 4px;
-  border: 1.5px solid var(--border);
+  width: 72px;
+  padding: 5px 4px;
+  border: 2px solid var(--border);
   border-radius: 6px;
-  font-size: 0.82rem;
-  font-weight: 700;
+  font-size: 0.9rem;
+  font-weight: 800;
   text-align: center;
   color: var(--text);
   background: #fff;
@@ -238,22 +239,22 @@ tbody tr.today { background: #e0e7ff; font-weight: 600; }
   background: #fff5f5;
 }
 .session-error {
-  font-size: 0.75rem;
+  font-size: 0.78rem;
   color: var(--danger);
   margin-top: 2px;
-  font-weight: 500;
+  font-weight: 600;
 }
 .btn-icon {
-  width: 22px;
-  height: 22px;
+  width: 26px;
+  height: 26px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 4px;
-  font-size: 0.8rem;
-  font-weight: 700;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 800;
   background: transparent;
-  color: #aaa;
+  color: #bbb;
   padding: 0;
   flex-shrink: 0;
 }
@@ -269,15 +270,16 @@ tbody tr.today { background: #e0e7ff; font-weight: 600; }
 .btn-add {
   background: var(--accent-bg);
   color: var(--accent);
-  font-size: 0.72rem;
-  padding: 3px 8px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 4px 10px;
 }
 .btn-add:hover { background: var(--accent-light); }
 .btn-del-day {
   background: transparent;
   color: #bbb;
-  font-size: 0.72rem;
-  padding: 3px 8px;
+  font-size: 0.78rem;
+  padding: 4px 10px;
 }
 .btn-del-day:hover { background: var(--danger-bg); color: var(--danger); }
 
@@ -362,25 +364,25 @@ tbody tr.today { background: #e0e7ff; font-weight: 600; }
   }
 
   /* Bảng: giữ tất cả cột, cho cuộn ngang */
-  table { min-width: 600px; font-size: 0.78rem; }
-  th { font-size: 0.7rem; padding: 7px 3px; }
-  td { padding: 4px 3px; }
-  .c-sessions { min-width: 180px; }
-  .c-count { width: 38px; }
-  .c-minutes { width: 42px; }
-  .c-total { width: 70px; font-size: 0.72rem; }
-  .c-actions { width: 100px; }
+  table { min-width: 650px; font-size: 0.85rem; }
+  th { font-size: 0.78rem; padding: 10px 5px; }
+  td { padding: 8px 5px; border-width: 1.5px; }
+  .c-sessions { min-width: 200px; }
+  .c-count { width: 45px; }
+  .c-minutes { width: 50px; }
+  .c-total { width: 80px; }
+  .c-actions { width: 110px; }
 
-  .day-date { font-size: 0.78rem; }
+  .day-date { font-size: 0.85rem; }
 
-  .session-stack { gap: 3px; }
-  .session-item { gap: 3px; padding: 2px 4px; }
-  .session-label { font-size: 0.68rem; min-width: 30px; }
-  .session-input { width: 58px; padding: 3px 3px; font-size: 0.78rem; }
-  .btn-icon { width: 20px; height: 20px; font-size: 0.75rem; }
+  .session-stack { gap: 4px; }
+  .session-item { gap: 4px; padding: 3px 5px; border-width: 2px; }
+  .session-label { font-size: 0.75rem; }
+  .session-input { width: 65px; padding: 4px 3px; font-size: 0.85rem; }
+  .btn-icon { width: 24px; height: 24px; font-size: 0.85rem; }
 
-  .row-actions { gap: 3px; }
-  .btn-add, .btn-del-day { padding: 3px 6px; font-size: 0.68rem; min-height: 28px; }
+  .row-actions { gap: 4px; }
+  .btn-add, .btn-del-day { padding: 5px 8px; font-size: 0.75rem; min-height: 32px; }
 
   .summary { padding: 10px 8px; }
   .summary-grid { grid-template-columns: repeat(2, 1fr); gap: 5px; }
