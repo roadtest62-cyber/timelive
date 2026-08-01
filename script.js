@@ -6,7 +6,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const importFileInput = document.getElementById('importFileInput');
   const loadingOverlay = document.getElementById('loadingOverlay');
 
-  // Initialize Firebase
   firebase.initializeApp(FIREBASE_CONFIG);
   const db = firebase.firestore();
 
@@ -55,26 +54,25 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function bindEvents() {
-    document.getElementById('showMonthBtn').addEventListener('click', () => {
+    document.getElementById('showMonthBtn').addEventListener('click', async () => {
       state.year = Number(yearSelect.value);
       state.month = Number(monthSelect.value);
-      loadMonth();
-    });
-
-    document.getElementById('addDayBtn').addEventListener('click', () => {
-      state.year = Number(yearSelect.value);
-      state.month = Number(monthSelect.value);
-      addDay();
+      showLoading();
+      await loadMonthData();
+      if (state.days.length === 0) {
+        state.days = buildMonthDays(state.year, state.month);
+        await saveMonth();
+      }
+      hideLoading();
+      render();
     });
 
     document.getElementById('clearMonthBtn').addEventListener('click', async () => {
-      const confirmed = window.confirm('Bạn có chắc chắn muốn xóa toàn bộ dữ liệu livestream của tháng này không?');
-      if (!confirmed) {
-        return;
-      }
+      const confirmed = window.confirm('Xóa toàn bộ dữ liệu livestream của tháng này?');
+      if (!confirmed) return;
       state.year = Number(yearSelect.value);
       state.month = Number(monthSelect.value);
-      state.days = [];
+      state.days = buildMonthDays(state.year, state.month);
       await saveMonth();
       render();
     });
@@ -93,10 +91,7 @@ document.addEventListener('DOMContentLoaded', () => {
     return `${year}_${String(month).padStart(2, '0')}`;
   }
 
-  async function loadMonth() {
-    state.year = Number(yearSelect.value);
-    state.month = Number(monthSelect.value);
-    showLoading();
+  async function loadMonthData() {
     try {
       const docRef = db.collection('livestream').doc(getDocId(state.year, state.month));
       const doc = await docRef.get();
@@ -108,11 +103,8 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     } catch (error) {
       console.error('Lỗi khi đọc dữ liệu từ Firebase:', error);
-      window.alert('Không thể tải dữ liệu. Vui lòng thử lại.');
       state.days = [];
     }
-    hideLoading();
-    render();
   }
 
   async function saveMonth() {
@@ -125,8 +117,20 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     } catch (error) {
       console.error('Lỗi khi lưu dữ liệu lên Firebase:', error);
-      window.alert('Không thể lưu dữ liệu. Vui lòng thử lại.');
     }
+  }
+
+  function buildMonthDays(year, month) {
+    const daysInMonth = getDaysInMonth(year, month);
+    const days = [];
+    for (let day = 1; day <= daysInMonth; day += 1) {
+      const date = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      days.push({
+        date,
+        sessions: [{ id: `${date}-1`, label: 'Ca 1', value: '' }]
+      });
+    }
+    return days;
   }
 
   function normalizeDay(day) {
@@ -142,32 +146,15 @@ document.addEventListener('DOMContentLoaded', () => {
     };
   }
 
-  async function addDay() {
-    const daysInMonth = getDaysInMonth(state.year, state.month);
-    const existingDates = new Set(state.days.map((day) => day.date));
-
-    let newDate = null;
-    for (let day = 1; day <= daysInMonth; day += 1) {
-      const candidateDate = `${state.year}-${String(state.month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-      if (!existingDates.has(candidateDate)) {
-        newDate = candidateDate;
-        break;
-      }
+  function normalizeSessions(sessions) {
+    if (!Array.isArray(sessions) || sessions.length === 0) {
+      return [{ id: `${Date.now()}-1`, label: 'Ca 1', value: '' }];
     }
-
-    if (!newDate) {
-      window.alert('Tháng này đã đủ ngày rồi!');
-      return;
-    }
-
-    state.days.push({
-      date: newDate,
-      sessions: [{ id: `${newDate}-1`, label: 'Ca 1', value: '' }]
-    });
-
-    state.days.sort((a, b) => a.date.localeCompare(b.date));
-    await saveMonth();
-    render();
+    return sessions.map((s, i) => ({
+      id: s.id || `${Date.now()}-${i + 1}`,
+      label: `Ca ${i + 1}`,
+      value: s.value || ''
+    }));
   }
 
   function render() {
@@ -177,52 +164,45 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function renderTable() {
     if (state.days.length === 0) {
-      daysTableBody.innerHTML = '<tr><td colspan="7">Chưa có dữ liệu. Nhấn "Thêm ngày" để bắt đầu.</td></tr>';
+      daysTableBody.innerHTML = '<tr><td colspan="7">Chọn tháng và nhấn "Hiển thị tháng" để bắt đầu.</td></tr>';
       return;
     }
 
     const rows = state.days.map((day, dayIndex) => {
       const summary = summarizeDay(day);
-      const sessionsMarkup = day.sessions
-        .map((session) => {
-          const parseResult = parseLiveDuration(session.value);
-          const errorText = session.value.trim() === '' ? '' : parseResult.valid ? '' : 'Vui lòng nhập đúng định dạng, ví dụ: 2h15';
-          return `
-            <div class="live-item">
-              <div class="live-item-header">
-                <span class="live-label">${escapeHtml(session.label)}</span>
-                <button type="button" class="icon-btn" data-action="remove-session" data-day-index="${dayIndex}" data-session-id="${session.id}">×</button>
-              </div>
-              <input
-                type="text"
-                class="live-input ${parseResult.valid || session.value.trim() === '' ? '' : 'input-invalid'}"
-                data-action="edit-session"
-                data-day-index="${dayIndex}"
-                data-session-id="${session.id}"
-                value="${escapeHtml(session.value)}"
-                placeholder="Ví dụ: 2h15"
-              />
-              <div class="input-error ${errorText ? '' : 'empty'}">${escapeHtml(errorText)}</div>
-            </div>`;
-        })
-        .join('');
+      const sessionsMarkup = day.sessions.map((session) => {
+        const parseResult = parseLiveDuration(session.value);
+        const valid = parseResult.valid || session.value.trim() === '';
+        return `
+          <div class="live-item">
+            <span class="live-label">${escapeHtml(session.label)}</span>
+            <input
+              type="text"
+              class="live-input${valid ? '' : ' input-invalid'}"
+              data-action="edit-session"
+              data-day-index="${dayIndex}"
+              data-session-id="${session.id}"
+              value="${escapeHtml(session.value)}"
+              placeholder="2h15"
+            />
+            <button type="button" class="icon-btn" data-action="remove-session" data-day-index="${dayIndex}" data-session-id="${session.id}">&times;</button>
+          </div>`;
+      }).join('');
 
       return `
         <tr>
-          <td>${dayIndex + 1}</td>
+          <td class="col-stt">${dayIndex + 1}</td>
           <td class="day-date">${formatDate(day.date)}</td>
           <td>
-            <div class="live-stack">
-              ${sessionsMarkup}
-            </div>
+            <div class="live-stack">${sessionsMarkup}</div>
           </td>
-          <td>${summary.validCount}</td>
-          <td>${summary.totalMinutes}</td>
+          <td class="col-count">${summary.validCount}</td>
+          <td class="col-minutes">${summary.totalMinutes}</td>
           <td>${summary.totalTime}</td>
           <td>
             <div class="day-actions">
-              <button type="button" class="btn-primary" data-action="add-session" data-day-index="${dayIndex}">Thêm ca live</button>
-              <button type="button" class="btn-danger" data-action="remove-day" data-day-index="${dayIndex}">Xóa ngày</button>
+              <button type="button" class="btn-primary" data-action="add-session" data-day-index="${dayIndex}">+ Ca</button>
+              <button type="button" class="btn-danger" data-action="remove-day" data-day-index="${dayIndex}">&times;</button>
             </div>
           </td>
         </tr>`;
@@ -237,19 +217,19 @@ document.addEventListener('DOMContentLoaded', () => {
       <h2>TỔNG KẾT THÁNG ${String(state.month).padStart(2, '0')}/${state.year}</h2>
       <div class="summary-grid">
         <div class="summary-card">
-          <span>Số ngày có livestream</span>
+          <span>Ngày có livestream</span>
           <strong>${summary.dayCount} ngày</strong>
         </div>
         <div class="summary-card">
-          <span>Tổng số ca livestream</span>
+          <span>Tổng ca livestream</span>
           <strong>${summary.validSessionCount} ca</strong>
         </div>
         <div class="summary-card">
-          <span>Tổng số phút livestream</span>
+          <span>Tổng phút livestream</span>
           <strong>${summary.totalMinutes} phút</strong>
         </div>
         <div class="summary-card">
-          <span>Tổng thời gian livestream</span>
+          <span>Tổng thời gian</span>
           <strong>${summary.totalTime}</strong>
         </div>
       </div>`;
@@ -258,7 +238,6 @@ document.addEventListener('DOMContentLoaded', () => {
   function summarizeDay(day) {
     let validCount = 0;
     let totalMinutes = 0;
-
     day.sessions.forEach((session) => {
       const result = parseLiveDuration(session.value);
       if (result.valid) {
@@ -266,7 +245,6 @@ document.addEventListener('DOMContentLoaded', () => {
         totalMinutes += result.totalMinutes;
       }
     });
-
     return {
       validCount,
       totalMinutes,
@@ -278,16 +256,12 @@ document.addEventListener('DOMContentLoaded', () => {
     let totalMinutes = 0;
     let validSessionCount = 0;
     let dayCount = 0;
-
     days.forEach((day) => {
       const summary = summarizeDay(day);
-      if (summary.validCount > 0) {
-        dayCount += 1;
-      }
+      if (summary.validCount > 0) dayCount += 1;
       totalMinutes += summary.totalMinutes;
       validSessionCount += summary.validCount;
     });
-
     return {
       dayCount,
       validSessionCount,
@@ -297,61 +271,39 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function parseLiveDuration(value) {
-    if (typeof value !== 'string') {
-      return { valid: false, totalMinutes: null, normalized: '' };
-    }
-
+    if (typeof value !== 'string') return { valid: false, totalMinutes: null, normalized: '' };
     const trimmed = value.trim();
-    if (trimmed === '') {
-      return { valid: false, totalMinutes: null, normalized: '' };
-    }
-
+    if (trimmed === '') return { valid: false, totalMinutes: null, normalized: '' };
     const cleaned = trimmed.replace(/\s+/g, '').toLowerCase();
     const match = cleaned.match(/^(\d+)h(\d{1,2})$/i);
-
-    if (!match) {
-      return { valid: false, totalMinutes: null, normalized: '' };
-    }
-
+    if (!match) return { valid: false, totalMinutes: null, normalized: '' };
     const hours = Number(match[1]);
     const minutes = Number(match[2]);
-
-    if (minutes > 59) {
-      return { valid: false, totalMinutes: null, normalized: '' };
-    }
-
+    if (minutes > 59) return { valid: false, totalMinutes: null, normalized: '' };
     const normalized = `${hours}h${String(minutes).padStart(2, '0')}`;
-    return {
-      valid: true,
-      totalMinutes: hours * 60 + minutes,
-      normalized
-    };
+    return { valid: true, totalMinutes: hours * 60 + minutes, normalized };
   }
 
   function formatMinutes(totalMinutes) {
     const hours = Math.floor(totalMinutes / 60);
     const minutes = totalMinutes % 60;
-    return `${hours} giờ ${minutes} phút`;
+    return `${hours}g ${minutes}p`;
   }
 
   function formatDate(dateString) {
     const [year, month, day] = dateString.split('-').map(Number);
-    return `${String(day).padStart(2, '0')}/${String(month).padStart(2, '0')}/${year}`;
+    return `${String(day).padStart(2, '0')}/${String(month).padStart(2, '0')}`;
   }
 
   async function handleTableClick(event) {
     const button = event.target.closest('button');
-    if (!button) {
-      return;
-    }
+    if (!button) return;
 
     const { action, dayIndex, sessionId } = button.dataset;
+
     if (action === 'add-session') {
       const day = state.days[Number(dayIndex)];
-      if (!day) {
-        return;
-      }
-
+      if (!day) return;
       day.sessions.push({
         id: `${day.date}-${day.sessions.length + 1}`,
         label: `Ca ${day.sessions.length + 1}`,
@@ -364,11 +316,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (action === 'remove-session') {
       const day = state.days[Number(dayIndex)];
-      if (!day) {
-        return;
-      }
-
-      day.sessions = day.sessions.filter((session) => session.id !== sessionId);
+      if (!day) return;
+      day.sessions = day.sessions.filter((s) => s.id !== sessionId);
       day.sessions = normalizeSessions(day.sessions);
       await saveMonth();
       render();
@@ -376,11 +325,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (action === 'remove-day') {
-      const confirmed = window.confirm('Bạn có chắc chắn muốn xóa ngày này khỏi danh sách?');
-      if (!confirmed) {
-        return;
-      }
-
       state.days.splice(Number(dayIndex), 1);
       await saveMonth();
       render();
@@ -389,34 +333,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
   async function handleTableInput(event) {
     const input = event.target;
-    if (!input.dataset.action || input.dataset.action !== 'edit-session') {
-      return;
-    }
+    if (input.dataset.action !== 'edit-session') return;
 
     const dayIndex = Number(input.dataset.dayIndex);
     const sessionId = input.dataset.sessionId;
-    const day = state.days[dayIndex];
-    const session = day?.sessions.find((item) => item.id === sessionId);
-
-    if (!session) {
-      return;
-    }
+    const session = state.days[dayIndex]?.sessions.find((s) => s.id === sessionId);
+    if (!session) return;
 
     session.value = input.value;
 
     const parseResult = parseLiveDuration(session.value);
     if (parseResult.valid) {
       input.classList.remove('input-invalid');
-      input.parentElement.querySelector('.input-error').textContent = '';
-      input.parentElement.querySelector('.input-error').classList.add('empty');
     } else if (session.value.trim() === '') {
       input.classList.remove('input-invalid');
-      input.parentElement.querySelector('.input-error').textContent = '';
-      input.parentElement.querySelector('.input-error').classList.add('empty');
     } else {
       input.classList.add('input-invalid');
-      input.parentElement.querySelector('.input-error').textContent = 'Vui lòng nhập đúng định dạng, ví dụ: 2h15';
-      input.parentElement.querySelector('.input-error').classList.remove('empty');
     }
 
     saveMonth();
@@ -426,18 +358,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
   async function handleTableBlur(event) {
     const input = event.target;
-    if (!input.dataset.action || input.dataset.action !== 'edit-session') {
-      return;
-    }
+    if (input.dataset.action !== 'edit-session') return;
 
     const dayIndex = Number(input.dataset.dayIndex);
     const sessionId = input.dataset.sessionId;
-    const day = state.days[dayIndex];
-    const session = day?.sessions.find((item) => item.id === sessionId);
-
-    if (!session) {
-      return;
-    }
+    const session = state.days[dayIndex]?.sessions.find((s) => s.id === sessionId);
+    if (!session) return;
 
     const parseResult = parseLiveDuration(session.value);
     if (parseResult.valid && session.value !== parseResult.normalized) {
@@ -451,52 +377,31 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function updateDaySummaryCell(dayIndex) {
     const row = daysTableBody.rows[dayIndex];
-    if (!row) {
-      return;
-    }
-
+    if (!row) return;
     const summary = summarizeDay(state.days[dayIndex]);
     row.cells[3].textContent = summary.validCount;
     row.cells[4].textContent = summary.totalMinutes;
     row.cells[5].textContent = summary.totalTime;
   }
 
-  function normalizeSessions(sessions = []) {
-    if (!Array.isArray(sessions) || sessions.length === 0) {
-      return [{ id: `${Date.now()}-1`, label: 'Ca 1', value: '' }];
-    }
-
-    return sessions.map((session, index) => ({
-      id: session.id || `${Date.now()}-${index + 1}`,
-      label: `Ca ${index + 1}`,
-      value: session.value || ''
-    }));
-  }
-
   function exportCsv() {
-    const rows = [['STT', 'Ngày', 'Ca livestream', 'Thời lượng nhập', 'Số phút', 'Tổng số phút trong ngày', 'Tổng thời gian trong ngày']];
-
+    const rows = [['STT', 'Ngày', 'Ca', 'Thời lượng', 'Phút', 'Tổng phút ngày', 'Tổng thời gian ngày']];
     state.days.forEach((day, dayIndex) => {
-      const daySummary = summarizeDay(day);
+      const ds = summarizeDay(day);
       day.sessions.forEach((session) => {
-        const result = parseLiveDuration(session.value);
-        const minutes = result.valid ? result.totalMinutes : '';
+        const r = parseLiveDuration(session.value);
         rows.push([
           dayIndex + 1,
           formatDate(day.date),
-          `${session.label}`,
+          session.label,
           session.value,
-          minutes,
-          daySummary.validCount > 0 ? daySummary.totalMinutes : '',
-          daySummary.validCount > 0 ? daySummary.totalTime : ''
+          r.valid ? r.totalMinutes : '',
+          ds.validCount > 0 ? ds.totalMinutes : '',
+          ds.validCount > 0 ? ds.totalTime : ''
         ]);
       });
     });
-
-    const csv = rows
-      .map((row) => row.map(escapeCsvValue).join(','))
-      .join('\n');
-
+    const csv = rows.map((row) => row.map(escapeCsvValue).join(',')).join('\n');
     downloadFile(`livestream_${state.year}_${String(state.month).padStart(2, '0')}.csv`, `﻿${csv}`);
   }
 
@@ -507,7 +412,6 @@ document.addEventListener('DOMContentLoaded', () => {
       month: state.month,
       days: state.days
     };
-
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -519,41 +423,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
   async function handleImportJson(event) {
     const file = event.target.files?.[0];
-    if (!file) {
-      return;
-    }
-
-    const confirmed = window.confirm('Bạn có chắc chắn muốn ghi đè dữ liệu hiện tại bằng file JSON đã chọn không?');
-    if (!confirmed) {
-      event.target.value = '';
-      return;
-    }
+    if (!file) return;
+    const confirmed = window.confirm('Ghi đè dữ liệu hiện tại bằng file JSON?');
+    if (!confirmed) { event.target.value = ''; return; }
 
     const reader = new FileReader();
     reader.onload = async () => {
       try {
-        const raw = reader.result;
-        const payload = JSON.parse(raw);
-
+        const payload = JSON.parse(reader.result);
         if (payload.days && Array.isArray(payload.days)) {
           state.days = payload.days.map(normalizeDay);
           if (payload.year) state.year = payload.year;
           if (payload.month) state.month = payload.month;
           yearSelect.value = String(state.year);
           monthSelect.value = String(state.month);
-        } else if (typeof payload === 'object' && payload !== null) {
-          const firstKey = Object.keys(payload).find((k) => k.startsWith('livestream_'));
-          if (firstKey) {
-            const data = payload[firstKey];
-            state.days = Array.isArray(data) ? data.map(normalizeDay) : [];
-          }
         }
-
         await saveMonth();
         render();
       } catch (error) {
         window.alert('File JSON không hợp lệ.');
-        console.error(error);
       }
     };
     reader.readAsText(file, 'utf-8');
@@ -571,20 +459,13 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function escapeCsvValue(value) {
-    const stringValue = String(value ?? '');
-    if (stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n')) {
-      return `"${stringValue.replace(/"/g, '""')}"`;
-    }
-    return stringValue;
+    const s = String(value ?? '');
+    if (s.includes(',') || s.includes('"') || s.includes('\n')) return `"${s.replace(/"/g, '""')}"`;
+    return s;
   }
 
   function escapeHtml(value) {
-    return String(value)
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#39;');
+    return String(value).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
   }
 
   function getDaysInMonth(year, month) {

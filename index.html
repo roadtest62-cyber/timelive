@@ -7,9 +7,7 @@
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
-    <!-- Khung tổng thể của ứng dụng -->
     <div class="app-shell">
-      <!-- Phần tiêu đề và giới thiệu -->
       <header class="hero">
         <h1>QUẢN LÝ THỜI GIAN LIVESTREAM</h1>
         <p>Ghi nhận, tính tổng và lưu trữ thời gian livestream theo từng ngày trong tháng.</p>
@@ -33,7 +31,6 @@
 
           <div class="button-group">
             <button id="showMonthBtn" type="button">Hiển thị tháng</button>
-            <button id="addDayBtn" type="button" class="btn-primary">Thêm ngày</button>
             <button id="clearMonthBtn" type="button" class="btn-danger">Xóa dữ liệu tháng</button>
           </div>
 
@@ -52,13 +49,13 @@
           <table>
             <thead>
               <tr>
-                <th>STT</th>
-                <th>Ngày</th>
-                <th>Các ca livestream</th>
-                <th>Tổng số ca</th>
-                <th>Tổng số phút trong ngày</th>
-                <th>Tổng thời gian trong ngày</th>
-                <th>Thao tác</th>
+                <th class="col-stt">STT</th>
+                <th class="col-date">Ngày</th>
+                <th class="col-sessions">Các ca livestream</th>
+                <th class="col-count">Số ca</th>
+                <th class="col-minutes">Phút</th>
+                <th class="col-total">Tổng thời gian</th>
+                <th class="col-actions">Thao tác</th>
               </tr>
             </thead>
             <tbody id="daysTableBody"></tbody>
@@ -69,7 +66,6 @@
       <section class="summary card" id="summarySection"></section>
     </div>
 
-    <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
     <script src="firebase-config.js"></script>
