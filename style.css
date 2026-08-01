@@ -361,41 +361,35 @@ tbody tr.today { background: #e0e7ff; font-weight: 600; }
     min-height: 40px;
   }
 
-  /* Bảng: ẩn cột STT,_Minutes,Total trên mobile để gọn */
-  table { min-width: 0; font-size: 0.82rem; }
-  .c-stt, .c-minutes, .c-total { display: none; }
-  td:nth-child(1), td:nth-child(5), td:nth-child(6),
-  th:nth-child(1), th:nth-child(5), th:nth-child(6) {
-    display: none;
-  }
-  .c-sessions { min-width: 0; }
-  .c-count { width: auto; }
-  .c-actions { width: auto; }
+  /* Bảng: giữ nguyên tất cả cột, cho cuộn ngang */
+  table { min-width: 700px; font-size: 0.8rem; }
+  th { font-size: 0.72rem; padding: 8px 4px; }
+  td { padding: 5px 4px; }
+  .c-sessions { min-width: 220px; }
+  .c-count { width: 42px; }
+  .c-actions { width: 120px; }
 
   /* Ngày */
   .day-date { font-size: 0.85rem; }
 
-  /* Session: stack dọc, ô nhập full width */
-  .session-stack { gap: 6px; }
+  /* Session: giữ nguyên layout, chỉ điều chỉnh kích thước */
+  .session-stack { gap: 4px; }
   .session-item {
-    flex-wrap: wrap;
     gap: 4px;
-    padding: 5px 8px;
+    padding: 3px 5px;
   }
   .session-label {
-    font-size: 0.78rem;
-    min-width: 34px;
+    font-size: 0.72rem;
+    min-width: 32px;
   }
   .session-input {
-    flex: 1 1 100%;
-    min-width: 0;
-    max-width: none;
-    padding: 8px 10px;
-    font-size: 0.95rem;
-    border-radius: 8px;
+    min-width: 65px;
+    max-width: 80px;
+    padding: 5px 4px;
+    font-size: 0.85rem;
   }
   .session-input::placeholder {
-    font-size: 0.85rem;
+    font-size: 0.75rem;
   }
   .btn-icon {
     width: 32px;

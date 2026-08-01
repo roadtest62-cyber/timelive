@@ -103,6 +103,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Delegate events trên tbody
     tbody.addEventListener('click', onTableClick);
     tbody.addEventListener('input', onTableInput);
+    tbody.addEventListener('change', onTableInput); // backup cho mobile
     tbody.addEventListener('blur', onTableBlur, true);
   }
 
