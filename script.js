@@ -1,6 +1,6 @@
 /**
  * Quản lý thời gian livestream
- * Lưu trữ trên localStorage, chạy hoàn toàn trên trình duyệt.
+ * Đồng bộ dữ liệu real-time qua Firebase Firestore.
  */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -13,15 +13,17 @@ document.addEventListener('DOMContentLoaded', () => {
   const saveStatusEl = $('saveStatus');
   const restoreFileInput = $('restoreFileInput');
 
+  // ===== FIREBASE =====
+  firebase.initializeApp(FIREBASE_CONFIG);
+  const db = firebase.firestore();
+
   // ===== STATE =====
   const now = new Date();
   const state = {
     year: now.getFullYear(),
     month: now.getMonth() + 1,
-    days: [] // [{date:'2026-08-01', sessions:[{id,label,value}]}]
+    days: []
   };
-
-  const STORAGE_PREFIX = 'livestream_';
 
   // ===== INIT =====
   function init() {
@@ -53,7 +55,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // ===== EVENTS =====
   function bindEvents() {
-    // Tự load khi đổi tháng/năm
     monthSelect.addEventListener('change', () => {
       state.month = +monthSelect.value;
       state.year = +yearSelect.value;
@@ -65,7 +66,6 @@ document.addEventListener('DOMContentLoaded', () => {
       loadMonth();
     });
 
-    // Nút tháng hiện tại
     $('todayBtn').addEventListener('click', () => {
       const n = new Date();
       state.year = n.getFullYear();
@@ -75,75 +75,65 @@ document.addEventListener('DOMContentLoaded', () => {
       loadMonth();
     });
 
-    // Nút lưu thủ công
-    $('saveBtn').addEventListener('click', () => {
-      saveToStorage();
-      showSaveStatus('Đã lưu thủ công lúc ' + new Date().toLocaleTimeString('vi-VN'));
+    $('saveBtn').addEventListener('click', async () => {
+      await saveToFirestore();
+      showSaveStatus('Đã lưu lúc ' + new Date().toLocaleTimeString('vi-VN'));
     });
 
-    // Xóa tháng
-    $('clearMonthBtn').addEventListener('click', () => {
+    $('clearMonthBtn').addEventListener('click', async () => {
       if (!confirm('Bạn có chắc chắn muốn xóa toàn bộ dữ liệu livestream của tháng này không?')) return;
       state.days = createEmptyDays(state.year, state.month);
-      saveToStorage();
+      await saveToFirestore();
       render();
       showSaveStatus('Đã xóa dữ liệu tháng');
     });
 
-    // Xuất CSV
     $('exportCsvBtn').addEventListener('click', exportCsv);
-
-    // Sao lưu JSON
     $('backupJsonBtn').addEventListener('click', backupJson);
-
-    // Khôi phục JSON
     $('restoreJsonBtn').addEventListener('click', () => restoreFileInput.click());
     restoreFileInput.addEventListener('change', restoreJson);
 
-    // Delegate events trên tbody
     tbody.addEventListener('click', onTableClick);
     tbody.addEventListener('input', onTableInput);
-    tbody.addEventListener('change', onTableInput); // backup cho mobile
+    tbody.addEventListener('change', onTableInput);
     tbody.addEventListener('blur', onTableBlur, true);
   }
 
-  // ===== STORAGE =====
-  function storageKey(y, m) {
-    return STORAGE_PREFIX + y + '_' + String(m).padStart(2, '0');
+  // ===== FIRESTORE =====
+  function docId(y, m) {
+    return `${y}_${String(m).padStart(2, '0')}`;
   }
 
-  function saveToStorage() {
+  async function saveToFirestore() {
     try {
-      localStorage.setItem(storageKey(state.year, state.month), JSON.stringify(state.days));
+      await db.collection('livestream').doc(docId(state.year, state.month)).set({
+        year: state.year,
+        month: state.month,
+        days: state.days
+      });
     } catch (e) {
-      console.error('Lỗi lưu dữ liệu:', e);
+      console.error('Lỗi lưu Firebase:', e);
       showSaveStatus('Có lỗi khi lưu dữ liệu');
     }
   }
 
-  function loadFromStorage(y, m) {
+  async function loadMonth() {
     try {
-      const raw = localStorage.getItem(storageKey(y, m));
-      if (!raw) return null;
-      const parsed = JSON.parse(raw);
-      return Array.isArray(parsed) ? parsed : null;
-    } catch {
-      return null;
-    }
-  }
-
-  // ===== LOAD MONTH =====
-  function loadMonth() {
-    const saved = loadFromStorage(state.year, state.month);
-    if (saved && saved.length > 0) {
-      // Dùng dữ cũ, nhưng bổ sung ngày thiếu nếu số lượng chưa đủ
+      const snap = await db.collection('livestream').doc(docId(state.year, state.month)).get();
       const fullDays = createEmptyDays(state.year, state.month);
-      const savedMap = new Map(saved.map(d => [d.date, d]));
-      state.days = fullDays.map(d => savedMap.has(d.date) ? mergeDay(d, savedMap.get(d.date)) : d);
-    } else {
+
+      if (snap.exists && Array.isArray(snap.data().days)) {
+        const savedMap = new Map(snap.data().days.map(d => [d.date, d]));
+        state.days = fullDays.map(d => savedMap.has(d.date) ? mergeDay(d, savedMap.get(d.date)) : d);
+      } else {
+        state.days = fullDays;
+      }
+
+      await saveToFirestore();
+    } catch (e) {
+      console.error('Lỗi đọc Firebase:', e);
       state.days = createEmptyDays(state.year, state.month);
     }
-    saveToStorage();
     render();
     showSaveStatus('Đã tải dữ liệu');
   }
@@ -162,7 +152,6 @@ document.addEventListener('DOMContentLoaded', () => {
     return days;
   }
 
-  // ===== MERGE: giữ data cũ, bổ sung ngày mới =====
   function mergeDay(empty, saved) {
     const sessions = (Array.isArray(saved.sessions) && saved.sessions.length > 0)
       ? saved.sessions.map((s, i) => ({
@@ -178,7 +167,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function parseLiveDuration(value) {
     if (typeof value !== 'string') return { valid: false, minutes: 0, normalized: '' };
     const cleaned = value.trim().replace(/\s+/g, '').toLowerCase();
-    if (cleaned === '') return { valid: false, minutes: 0, normalized: '' }; // rỗng = chưa nhập
+    if (cleaned === '') return { valid: false, minutes: 0, normalized: '' };
     const match = cleaned.match(/^(\d+)h(\d{1,2})$/i);
     if (!match) return { valid: false, minutes: 0, normalized: '' };
     const hours = Number(match[1]);
@@ -188,14 +177,12 @@ document.addEventListener('DOMContentLoaded', () => {
     return { valid: true, minutes: hours * 60 + mins, normalized };
   }
 
-  // ===== FORMAT MINUTES =====
   function formatMinutes(total) {
     const h = Math.floor(total / 60);
     const m = total % 60;
     return `${h} giờ ${m} phút`;
   }
 
-  // ===== SUMMARIZE DAY =====
   function summarizeDay(day) {
     let count = 0, mins = 0;
     for (const s of day.sessions) {
@@ -205,7 +192,6 @@ document.addEventListener('DOMContentLoaded', () => {
     return { count, mins, text: formatMinutes(mins) };
   }
 
-  // ===== SUMMARIZE MONTH =====
   function summarizeMonth() {
     let totalMins = 0, totalCount = 0, dayCount = 0;
     for (const day of state.days) {
@@ -231,10 +217,9 @@ document.addEventListener('DOMContentLoaded', () => {
       const isToday = day.date === todayStr;
       const sessionsHtml = day.sessions.map(s => {
         const r = parseLiveDuration(s.value);
-        const isValid = r.valid;
         const isEmpty = s.value.trim() === '';
-        const inputClass = isEmpty ? '' : (isValid ? '' : ' invalid');
-        const errorMsg = (!isValid && !isEmpty) ? '<div class="session-error">Sai định dạng. Vui lòng nhập theo dạng 2h15.</div>' : '';
+        const inputClass = isEmpty ? '' : (r.valid ? '' : ' invalid');
+        const errorMsg = (!r.valid && !isEmpty) ? '<div class="session-error">Sai định dạng. Vui lòng nhập theo dạng 2h15.</div>' : '';
         return `
           <div class="session-item">
             <span class="session-label">${esc(s.label)}</span>
@@ -281,7 +266,6 @@ document.addEventListener('DOMContentLoaded', () => {
       </div>`;
   }
 
-  // ===== UPDATE SINGLE ROW (không render lại toàn bộ bảng) =====
   function updateRow(dayIndex) {
     const row = tbody.rows[dayIndex];
     if (!row) return;
@@ -293,7 +277,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // ===== TABLE EVENTS =====
-  function onTableClick(e) {
+  async function onTableClick(e) {
     const btn = e.target.closest('button');
     if (!btn) return;
     const a = btn.dataset.a;
@@ -304,8 +288,8 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!day) return;
       const n = day.sessions.length + 1;
       day.sessions.push({ id: `${day.date}-${n}`, label: `Ca ${n}`, value: '' });
-      saveToStorage();
-      render(); // Render lại khi thêm/xóa để cập nhật DOM
+      await saveToFirestore();
+      render();
       showSaveStatus('Đã lưu lúc ' + new Date().toLocaleTimeString('vi-VN'));
     }
 
@@ -315,12 +299,11 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!day) return;
       if (!confirm('Bạn có chắc chắn muốn xóa ca livestream này không?')) return;
       day.sessions = day.sessions.filter(s => s.id !== sid);
-      // Đánh lại label
       day.sessions.forEach((s, i) => { s.label = `Ca ${i + 1}`; });
       if (day.sessions.length === 0) {
         day.sessions.push({ id: `${day.date}-1`, label: 'Ca 1', value: '' });
       }
-      saveToStorage();
+      await saveToFirestore();
       render();
       showSaveStatus('Đã lưu lúc ' + new Date().toLocaleTimeString('vi-VN'));
     }
@@ -330,14 +313,13 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!day) return;
       if (!confirm('Bạn có chắc chắn muốn xóa toàn bộ các ca livestream của ngày này không?')) return;
       day.sessions = [{ id: `${day.date}-1`, label: 'Ca 1', value: '' }];
-      saveToStorage();
+      await saveToFirestore();
       render();
       showSaveStatus('Đã lưu lúc ' + new Date().toLocaleTimeString('vi-VN'));
     }
   }
 
-  // input: chỉ cập nhật data + validate, KHÔNG render lại bảng
-  function onTableInput(e) {
+  async function onTableInput(e) {
     const input = e.target;
     if (!input.dataset.sid) return;
     const di = +input.dataset.di;
@@ -346,17 +328,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     session.value = input.value;
 
-    // Validate realtime
     const r = parseLiveDuration(session.value);
     const isEmpty = session.value.trim() === '';
     if (isEmpty || r.valid) {
       input.classList.remove('invalid');
-      // Xóa thông báo lỗi nếu có
       const errEl = input.parentElement.nextElementSibling;
       if (errEl && errEl.classList.contains('session-error')) errEl.remove();
     } else {
       input.classList.add('invalid');
-      // Thêm thông báo lỗi nếu chưa có
       if (!input.parentElement.nextElementSibling?.classList.contains('session-error')) {
         const err = document.createElement('div');
         err.className = 'session-error';
@@ -365,16 +344,12 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
 
-    // Cập nhật tổng ngày (không render lại bảng)
     updateRow(di);
-    // Cập nhật tổng tháng
     renderSummary();
-    // Lưu
-    saveToStorage();
+    await saveToFirestore();
   }
 
-  // blur: chuẩn hóa giá trị
-  function onTableBlur(e) {
+  async function onTableBlur(e) {
     const input = e.target;
     if (!input.dataset.sid) return;
     const di = +input.dataset.di;
@@ -383,7 +358,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const r = parseLiveDuration(session.value);
     if (r.valid && session.value !== r.normalized) {
-      // Chuẩn hóa: 2 H 15 → 2h15
       session.value = r.normalized;
       input.value = r.normalized;
       input.classList.remove('invalid');
@@ -391,7 +365,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (errEl && errEl.classList.contains('session-error')) errEl.remove();
       updateRow(di);
       renderSummary();
-      saveToStorage();
+      await saveToFirestore();
       showSaveStatus('Đã lưu lúc ' + new Date().toLocaleTimeString('vi-VN'));
     }
   }
@@ -416,28 +390,28 @@ document.addEventListener('DOMContentLoaded', () => {
     download(`livestream-thang-${String(state.month).padStart(2, '0')}-${state.year}.csv`, '﻿' + csv);
   }
 
-  // ===== BACKUP JSON (toàn bộ localStorage) =====
-  function backupJson() {
-    const data = {};
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (key.startsWith(STORAGE_PREFIX)) {
-        try { data[key] = JSON.parse(localStorage.getItem(key)); }
-        catch { data[key] = localStorage.getItem(key); }
-      }
+  // ===== BACKUP JSON (toàn bộ Firebase) =====
+  async function backupJson() {
+    try {
+      const snapshot = await db.collection('livestream').get();
+      const data = {};
+      snapshot.forEach(doc => { data[doc.id] = doc.data(); });
+      const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `livestream-backup-${dateStr}.json`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+      showSaveStatus('Đã sao lưu JSON');
+    } catch (e) {
+      console.error(e);
+      showSaveStatus('Lỗi khi sao lưu');
     }
-    const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = `livestream-backup-${dateStr}.json`;
-    a.click();
-    URL.revokeObjectURL(a.href);
-    showSaveStatus('Đã sao lưu JSON');
   }
 
   // ===== RESTORE JSON =====
-  function restoreJson(e) {
+  async function restoreJson(e) {
     const file = e.target.files?.[0];
     if (!file) return;
     if (!confirm('Bạn có chắc chắn muốn khôi phục dữ liệu từ file JSON này không?\nDữ liệu hiện tại sẽ bị ghi đè.')) {
@@ -445,26 +419,24 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
     const reader = new FileReader();
-    reader.onload = () => {
+    reader.onload = async () => {
       try {
         const data = JSON.parse(reader.result);
         if (typeof data !== 'object' || data === null) throw new Error();
-        // Kiểm tra cấu trúc: mỗi key phải bắt đầu bằng STORAGE_PREFIX
-        const validKeys = Object.keys(data).filter(k => k.startsWith(STORAGE_PREFIX));
-        if (validKeys.length === 0) { alert('File không hợp lệ hoặc không có dữ liệu livestream.'); return; }
-        // Xóa dữ liệu cũ
-        const keysToRemove = [];
-        for (let i = 0; i < localStorage.length; i++) {
-          const k = localStorage.key(i);
-          if (k.startsWith(STORAGE_PREFIX)) keysToRemove.push(k);
-        }
-        keysToRemove.forEach(k => localStorage.removeItem(k));
+        // Xóa dữ liệu cũ trên Firebase
+        const snapshot = await db.collection('livestream').get();
+        const batch = db.batch();
+        snapshot.forEach(doc => batch.delete(doc.ref));
+        await batch.commit();
         // Ghi dữ liệu mới
-        validKeys.forEach(k => {
-          localStorage.setItem(k, JSON.stringify(data[k]));
+        const batch2 = db.batch();
+        Object.entries(data).forEach(([key, val]) => {
+          if (typeof key === 'string' && typeof val === 'object') {
+            batch2.set(db.collection('livestream').doc(key), val);
+          }
         });
-        // Tải lại tháng hiện tại
-        loadMonth();
+        await batch2.commit();
+        await loadMonth();
         showSaveStatus('Đã khôi phục dữ liệu thành công');
       } catch {
         alert('File JSON không hợp lệ.');
@@ -494,6 +466,5 @@ document.addEventListener('DOMContentLoaded', () => {
     saveStatusEl.textContent = msg;
   }
 
-  // ===== START =====
   init();
 });
