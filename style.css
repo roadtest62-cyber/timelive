@@ -23,6 +23,7 @@ body {
   background: var(--bg);
   color: var(--text);
   line-height: 1.5;
+  -webkit-text-size-adjust: 100%;
 }
 button, input, select { font: inherit; }
 
@@ -138,12 +139,13 @@ button:active { transform: scale(0.97); }
 }
 .table-wrap {
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 table {
   width: 100%;
   border-collapse: collapse;
   min-width: 820px;
-  font-size: 0.82rem;
+  font-size: 0.85rem;
 }
 thead {
   position: sticky;
@@ -154,15 +156,15 @@ thead tr {
   background: var(--accent);
 }
 th {
-  padding: 8px 6px;
+  padding: 10px 8px;
   color: #fff;
   font-weight: 700;
-  font-size: 0.75rem;
+  font-size: 0.8rem;
   text-align: center;
   white-space: nowrap;
 }
 td {
-  padding: 6px 8px;
+  padding: 8px;
   border-bottom: 1px solid var(--border-light);
   vertical-align: middle;
   text-align: center;
@@ -180,7 +182,7 @@ tbody tr.today { background: #e0e7ff; font-weight: 600; }
 .c-count { width: 50px; }
 .c-minutes { width: 60px; }
 .c-total { width: 100px; }
-.c-actions { width: 140px; white-space: nowrap; }
+.c-actions { width: 150px; white-space: nowrap; }
 
 .day-date {
   font-weight: 700;
@@ -191,56 +193,68 @@ tbody tr.today { background: #e0e7ff; font-weight: 600; }
 .session-stack {
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 6px;
 }
 .session-item {
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 6px;
   background: #f8f9ff;
-  border: 1px solid var(--border-light);
+  border: 1.5px solid var(--border-light);
   border-radius: 8px;
-  padding: 4px 6px;
+  padding: 5px 8px;
 }
 .session-label {
   font-weight: 700;
-  font-size: 0.75rem;
+  font-size: 0.8rem;
   color: var(--accent);
-  min-width: 36px;
+  min-width: 40px;
   white-space: nowrap;
 }
+
+/* Ô nhập giờ — to, rõ, dễ bấm */
 .session-input {
   flex: 1;
-  min-width: 70px;
-  max-width: 120px;
-  padding: 3px 6px;
-  border: 1.5px solid var(--border);
-  border-radius: 6px;
-  font-size: 0.82rem;
-  font-weight: 600;
+  min-width: 90px;
+  max-width: 150px;
+  padding: 8px 10px;
+  border: 2px solid var(--border);
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 700;
   text-align: center;
+  color: var(--text);
+  background: #fff;
+  transition: border-color 0.15s, box-shadow 0.15s;
 }
 .session-input:focus {
   outline: none;
   border-color: var(--accent);
-  box-shadow: 0 0 0 2px rgba(67,56,202,0.12);
+  box-shadow: 0 0 0 3px rgba(67,56,202,0.15);
 }
 .session-input.invalid {
   border-color: var(--danger);
   background: #fff5f5;
 }
 .session-error {
-  font-size: 0.7rem;
+  font-size: 0.75rem;
   color: var(--danger);
   margin-top: 2px;
+  font-weight: 500;
 }
 .btn-icon {
-  padding: 2px 6px;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   border-radius: 6px;
-  font-size: 0.8rem;
+  font-size: 0.9rem;
   font-weight: 700;
   background: transparent;
   color: #aaa;
+  padding: 0;
+  flex-shrink: 0;
 }
 .btn-icon:hover { background: var(--danger-bg); color: var(--danger); }
 
@@ -254,15 +268,15 @@ tbody tr.today { background: #e0e7ff; font-weight: 600; }
 .btn-add {
   background: var(--accent-bg);
   color: var(--accent);
-  font-size: 0.72rem;
-  padding: 3px 8px;
+  font-size: 0.78rem;
+  padding: 5px 10px;
 }
 .btn-add:hover { background: var(--accent-light); }
 .btn-del-day {
   background: transparent;
   color: #bbb;
-  font-size: 0.72rem;
-  padding: 3px 8px;
+  font-size: 0.78rem;
+  padding: 5px 10px;
 }
 .btn-del-day:hover { background: var(--danger-bg); color: var(--danger); }
 
@@ -305,11 +319,110 @@ tbody tr.today { background: #e0e7ff; font-weight: 600; }
   margin-top: 2px;
 }
 
-/* ===== RESPONSIVE ===== */
+/* ===================================================================
+   RESPONSIVE — MOBILE
+   =================================================================== */
 @media (max-width: 768px) {
-  .app { padding: 8px 6px 20px; }
-  .controls-row { flex-direction: column; align-items: stretch; }
-  .controls-left, .controls-right { justify-content: center; }
-  .summary-grid { grid-template-columns: repeat(2, 1fr); }
-  table { min-width: 700px; }
+  .app {
+    padding: 8px 8px 24px;
+  }
+
+  /* Header */
+  .header h1 {
+    font-size: 16px;
+    letter-spacing: 0.02em;
+  }
+
+  /* Controls: xếp dọc, nút to */
+  .controls { padding: 10px; }
+  .controls-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+  .controls-left {
+    justify-content: center;
+    gap: 6px;
+  }
+  .controls-right {
+    justify-content: center;
+    gap: 6px;
+  }
+  select {
+    padding: 8px 10px;
+    font-size: 0.9rem;
+  }
+  button {
+    padding: 10px 14px;
+    font-size: 0.85rem;
+    min-height: 40px;
+  }
+
+  /* Bảng: ẩn cột STT,_Minutes,Total trên mobile để gọn */
+  table { min-width: 0; font-size: 0.82rem; }
+  .c-stt, .c-minutes, .c-total { display: none; }
+  td:nth-child(1), td:nth-child(5), td:nth-child(6),
+  th:nth-child(1), th:nth-child(5), th:nth-child(6) {
+    display: none;
+  }
+  .c-sessions { min-width: 0; }
+  .c-count { width: auto; }
+  .c-actions { width: auto; }
+
+  /* Ngày */
+  .day-date { font-size: 0.85rem; }
+
+  /* Session: stack dọc, ô nhập full width */
+  .session-stack { gap: 6px; }
+  .session-item {
+    flex-wrap: wrap;
+    gap: 4px;
+    padding: 6px 8px;
+  }
+  .session-label {
+    font-size: 0.78rem;
+    min-width: 34px;
+  }
+  .session-input {
+    flex: 1 1 100%;
+    min-width: 0;
+    max-width: none;
+    padding: 10px 12px;
+    font-size: 1.05rem;
+    border-radius: 8px;
+  }
+  .session-input::placeholder {
+    font-size: 0.9rem;
+  }
+  .btn-icon {
+    width: 32px;
+    height: 32px;
+    font-size: 1rem;
+  }
+
+  /* Nút thao tác: xếp dọc, to */
+  .row-actions {
+    flex-direction: column;
+    gap: 4px;
+    align-items: stretch;
+  }
+  .btn-add, .btn-del-day {
+    padding: 8px 10px;
+    font-size: 0.82rem;
+    min-height: 36px;
+    text-align: center;
+  }
+
+  /* Summary: 2 cột */
+  .summary { padding: 12px 10px; }
+  .summary-grid { grid-template-columns: repeat(2, 1fr); gap: 6px; }
+  .summary-item { padding: 8px 6px; }
+  .summary-item .value { font-size: 0.95rem; }
+}
+
+/* Mobile rất nhỏ (< 400px) */
+@media (max-width: 400px) {
+  .header h1 { font-size: 14px; }
+  button { padding: 10px 12px; font-size: 0.82rem; }
+  .session-input { font-size: 1rem; padding: 10px 8px; }
 }
