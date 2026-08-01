@@ -29,26 +29,26 @@ button, input, select { font: inherit; }
 
 /* ===== LAYOUT ===== */
 .app {
-  max-width: 1300px;
+  width: 100%;
   margin: 0 auto;
-  padding: 12px 12px 32px;
+  padding: 10px 16px 32px;
 }
 
 /* ===== HEADER ===== */
 .header {
   text-align: center;
-  padding: 12px 0 8px;
+  padding: 10px 0 6px;
 }
 .header h1 {
   margin: 0;
-  font-size: clamp(18px, 3vw, 28px);
-  font-weight: 800;
+  font-size: clamp(20px, 3vw, 32px);
+  font-weight: 900;
   color: var(--accent);
-  letter-spacing: 0.03em;
+  letter-spacing: 0.04em;
 }
 .save-status {
-  margin-top: 4px;
-  font-size: 0.78rem;
+  margin-top: 3px;
+  font-size: 0.82rem;
   color: var(--muted);
   min-height: 1.2em;
 }
@@ -144,8 +144,7 @@ button:active { transform: scale(0.97); }
 table {
   width: 100%;
   border-collapse: collapse;
-  min-width: 750px;
-  font-size: 0.95rem;
+  font-size: 1rem;
   text-transform: uppercase;
 }
 thead {
@@ -157,35 +156,35 @@ thead tr {
   background: var(--accent);
 }
 th {
-  padding: 12px 10px;
+  padding: 14px 10px;
   color: #fff;
   font-weight: 700;
-  font-size: 0.85rem;
+  font-size: 0.9rem;
   text-align: center;
   white-space: nowrap;
   border-right: 1px solid rgba(255,255,255,0.2);
 }
 th:last-child { border-right: none; }
 td {
-  padding: 10px 8px;
+  padding: 12px 10px;
   border: 1.5px solid var(--border);
   vertical-align: middle;
   text-align: center;
   font-weight: 600;
-  font-size: 0.9rem;
+  font-size: 0.95rem;
 }
 tbody tr:nth-child(odd) { background: #fafbff; }
 tbody tr:nth-child(even) { background: #fff; }
 tbody tr:hover { background: #eef2ff; }
 tbody tr.today { background: #e0e7ff; font-weight: 700; }
 
-.c-stt { width: 40px; }
-.c-date { width: 80px; white-space: nowrap; }
-.c-sessions { width: 200px; text-align: center; }
-.c-count { width: 55px; }
-.c-minutes { width: 60px; }
-.c-total { width: 100px; }
-.c-actions { width: 130px; white-space: nowrap; }
+.c-stt { width: 4%; }
+.c-date { width: 10%; white-space: nowrap; }
+.c-sessions { width: 30%; text-align: center; }
+.c-count { width: 8%; }
+.c-minutes { width: 8%; }
+.c-total { width: 18%; }
+.c-actions { width: 12%; white-space: nowrap; }
 
 .day-date {
   font-weight: 800;
@@ -212,17 +211,17 @@ tbody tr.today { background: #e0e7ff; font-weight: 700; }
 }
 .session-label {
   font-weight: 800;
-  font-size: 0.8rem;
+  font-size: 0.85rem;
   color: var(--accent);
   white-space: nowrap;
 }
 
 .session-input {
-  width: 72px;
-  padding: 5px 4px;
+  width: 80px;
+  padding: 6px 5px;
   border: 2px solid var(--border);
   border-radius: 6px;
-  font-size: 0.9rem;
+  font-size: 1rem;
   font-weight: 800;
   text-align: center;
   color: var(--text);
@@ -270,16 +269,16 @@ tbody tr.today { background: #e0e7ff; font-weight: 700; }
 .btn-add {
   background: var(--accent-bg);
   color: var(--accent);
-  font-size: 0.78rem;
+  font-size: 0.82rem;
   font-weight: 700;
-  padding: 4px 10px;
+  padding: 5px 12px;
 }
 .btn-add:hover { background: var(--accent-light); }
 .btn-del-day {
   background: transparent;
   color: #bbb;
-  font-size: 0.78rem;
-  padding: 4px 10px;
+  font-size: 0.82rem;
+  padding: 5px 12px;
 }
 .btn-del-day:hover { background: var(--danger-bg); color: var(--danger); }
 
@@ -328,71 +327,38 @@ tbody tr.today { background: #e0e7ff; font-weight: 700; }
    RESPONSIVE — MOBILE
    =================================================================== */
 @media (max-width: 768px) {
-  .app {
-    padding: 8px 8px 24px;
-  }
+  .app { padding: 6px 6px 20px; }
+  .header h1 { font-size: 17px; }
+  .save-status { font-size: 0.75rem; }
 
-  /* Header */
-  .header h1 {
-    font-size: 16px;
-    letter-spacing: 0.02em;
-  }
+  .controls { padding: 8px; }
+  .controls-row { flex-direction: column; align-items: stretch; gap: 6px; }
+  .controls-left { justify-content: center; gap: 5px; flex-wrap: wrap; }
+  .controls-right { justify-content: center; gap: 5px; flex-wrap: wrap; }
+  select { padding: 7px 8px; font-size: 0.85rem; }
+  button { padding: 8px 12px; font-size: 0.82rem; min-height: 36px; }
 
-  /* Controls: xếp dọc, nút to */
-  .controls { padding: 10px; }
-  .controls-row {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 8px;
-  }
-  .controls-left {
-    justify-content: center;
-    gap: 6px;
-  }
-  .controls-right {
-    justify-content: center;
-    gap: 6px;
-  }
-  select {
-    padding: 8px 10px;
-    font-size: 0.9rem;
-  }
-  button {
-    padding: 10px 14px;
-    font-size: 0.85rem;
-    min-height: 40px;
-  }
+  table { min-width: 580px; font-size: 0.82rem; }
+  th { font-size: 0.75rem; padding: 9px 4px; }
+  td { padding: 7px 4px; }
+  .c-stt { width: 5%; }
+  .c-date { width: 12%; }
+  .c-sessions { width: 32%; min-width: 180px; }
+  .c-count { width: 8%; }
+  .c-minutes { width: 8%; }
+  .c-total { width: 18%; font-size: 0.78rem; }
+  .c-actions { width: 12%; }
 
-  /* Bảng: giữ tất cả cột, cho cuộn ngang */
-  table { min-width: 650px; font-size: 0.85rem; }
-  th { font-size: 0.78rem; padding: 10px 5px; }
-  td { padding: 8px 5px; border-width: 1.5px; }
-  .c-sessions { min-width: 200px; }
-  .c-count { width: 45px; }
-  .c-minutes { width: 50px; }
-  .c-total { width: 80px; }
-  .c-actions { width: 110px; }
+  .day-date { font-size: 0.82rem; }
+  .session-stack { gap: 3px; }
+  .session-item { gap: 3px; padding: 2px 4px; }
+  .session-label { font-size: 0.72rem; }
+  .session-input { width: 60px; padding: 4px 3px; font-size: 0.82rem; }
+  .btn-icon { width: 22px; height: 22px; font-size: 0.8rem; }
+  .btn-add, .btn-del-day { padding: 4px 7px; font-size: 0.72rem; min-height: 28px; }
 
-  .day-date { font-size: 0.85rem; }
-
-  .session-stack { gap: 4px; }
-  .session-item { gap: 4px; padding: 3px 5px; border-width: 2px; }
-  .session-label { font-size: 0.75rem; }
-  .session-input { width: 65px; padding: 4px 3px; font-size: 0.85rem; }
-  .btn-icon { width: 24px; height: 24px; font-size: 0.85rem; }
-
-  .row-actions { gap: 4px; }
-  .btn-add, .btn-del-day { padding: 5px 8px; font-size: 0.75rem; min-height: 32px; }
-
-  .summary { padding: 10px 8px; }
-  .summary-grid { grid-template-columns: repeat(2, 1fr); gap: 5px; }
-  .summary-item { padding: 6px 5px; }
-  .summary-item .value { font-size: 0.88rem; }
-}
-
-/* Mobile rất nhỏ (< 400px) */
-@media (max-width: 400px) {
-  .header h1 { font-size: 14px; }
-  button { padding: 10px 12px; font-size: 0.82rem; }
-  .session-input { font-size: 1rem; padding: 10px 8px; }
+  .summary { padding: 8px 6px; }
+  .summary-grid { grid-template-columns: repeat(2, 1fr); gap: 4px; }
+  .summary-item { padding: 5px 4px; }
+  .summary-item .value { font-size: 0.85rem; }
 }
