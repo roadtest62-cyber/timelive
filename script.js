@@ -125,17 +125,18 @@ document.addEventListener('DOMContentLoaded', () => {
       if (snap.exists && Array.isArray(snap.data().days)) {
         const savedMap = new Map(snap.data().days.map(d => [d.date, d]));
         state.days = fullDays.map(d => savedMap.has(d.date) ? mergeDay(d, savedMap.get(d.date)) : d);
+        showSaveStatus('Đã đồng bộ từ cloud');
       } else {
         state.days = fullDays;
+        await saveToFirestore();
+        showSaveStatus('Đã tạo dữ liệu mới');
       }
-
-      await saveToFirestore();
     } catch (e) {
-      console.error('Lỗi đọc Firebase:', e);
+      console.error('Lỗi Firebase:', e);
       state.days = createEmptyDays(state.year, state.month);
+      showSaveStatus('Lỗi kết nối: ' + (e.message || 'Không xác định'));
     }
     render();
-    showSaveStatus('Đã tải dữ liệu');
   }
 
   // ===== CREATE EMPTY DAYS =====
