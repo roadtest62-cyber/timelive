@@ -22,7 +22,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const state = {
     year: now.getFullYear(),
     month: now.getMonth() + 1,
-    days: []
+    days: [],
+    showEmpty: true
   };
 
   // ===== INIT =====
@@ -73,6 +74,12 @@ document.addEventListener('DOMContentLoaded', () => {
       yearSelect.value = state.year;
       monthSelect.value = state.month;
       loadMonth();
+    });
+
+    $('toggleEmptyBtn').addEventListener('click', () => {
+      state.showEmpty = !state.showEmpty;
+      $('toggleEmptyBtn').textContent = state.showEmpty ? 'Ẩn ngày trống' : 'Hiện ngày trống';
+      renderTable();
     });
 
     $('saveBtn').addEventListener('click', async () => {
@@ -213,7 +220,14 @@ document.addEventListener('DOMContentLoaded', () => {
   function renderTable() {
     const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
-    tbody.innerHTML = state.days.map((day, i) => {
+    // Lọc ngày: nếu ẩn ngày trống thì chỉ hiện ngày có dữ liệu
+    const visibleDays = state.showEmpty
+      ? state.days.map((d, i) => ({ day: d, origIndex: i }))
+      : state.days.map((d, i) => ({ day: d, origIndex: i })).filter(({ day }) => {
+          return day.sessions.some(s => s.value.trim() !== '');
+        });
+
+    tbody.innerHTML = visibleDays.map(({ day, origIndex }) => {
       const sum = summarizeDay(day);
       const isToday = day.date === todayStr;
       const sessionsHtml = day.sessions.map(s => {
@@ -225,9 +239,9 @@ document.addEventListener('DOMContentLoaded', () => {
           <div class="session-item">
             <span class="session-label">${esc(s.label)}</span>
             <input type="text" class="session-input${inputClass}"
-              data-di="${i}" data-sid="${s.id}"
+              data-di="${origIndex}" data-sid="${s.id}"
               value="${esc(s.value)}" placeholder="Ví dụ: 2h15" />
-            <button type="button" class="btn-icon" data-a="rm-session" data-di="${i}" data-sid="${s.id}">&times;</button>
+            <button type="button" class="btn-icon" data-a="rm-session" data-di="${origIndex}" data-sid="${s.id}">&times;</button>
           </div>
           ${errorMsg}`;
       }).join('');
@@ -237,7 +251,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       return `
         <tr class="${isToday ? 'today' : ''}">
-          <td>${i + 1}</td>
+          <td>${origIndex + 1}</td>
           <td class="day-date">${displayDate}</td>
           <td class="c-sessions">
             <div class="session-stack">${sessionsHtml}</div>
@@ -247,8 +261,8 @@ document.addEventListener('DOMContentLoaded', () => {
           <td>${sum.text}</td>
           <td>
             <div class="row-actions">
-              <button type="button" class="btn-add" data-a="add-session" data-di="${i}">Thêm ca live</button>
-              <button type="button" class="btn-del-day" data-a="clear-day" data-di="${i}">Xóa ngày</button>
+              <button type="button" class="btn-add" data-a="add-session" data-di="${origIndex}">Thêm ca live</button>
+              <button type="button" class="btn-del-day" data-a="clear-day" data-di="${origIndex}">Xóa ngày</button>
             </div>
           </td>
         </tr>`;

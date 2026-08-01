@@ -361,66 +361,31 @@ tbody tr.today { background: #e0e7ff; font-weight: 600; }
     min-height: 40px;
   }
 
-  /* Bảng: ẩn cột STT,_Minutes,Total trên mobile để gọn */
-  table { min-width: 0; font-size: 0.82rem; }
-  .c-stt, .c-minutes, .c-total { display: none; }
-  td:nth-child(1), td:nth-child(5), td:nth-child(6),
-  th:nth-child(1), th:nth-child(5), th:nth-child(6) {
-    display: none;
-  }
-  .c-sessions { min-width: 0; }
-  .c-count { width: auto; }
-  .c-actions { width: auto; }
+  /* Bảng: giữ tất cả cột, cho cuộn ngang */
+  table { min-width: 600px; font-size: 0.78rem; }
+  th { font-size: 0.7rem; padding: 7px 3px; }
+  td { padding: 4px 3px; }
+  .c-sessions { min-width: 180px; }
+  .c-count { width: 38px; }
+  .c-minutes { width: 42px; }
+  .c-total { width: 70px; font-size: 0.72rem; }
+  .c-actions { width: 100px; }
 
-  /* Ngày */
-  .day-date { font-size: 0.85rem; }
+  .day-date { font-size: 0.78rem; }
 
-  /* Session: stack dọc, ô nhập full width */
-  .session-stack { gap: 6px; }
-  .session-item {
-    flex-wrap: wrap;
-    gap: 4px;
-    padding: 5px 8px;
-  }
-  .session-label {
-    font-size: 0.78rem;
-    min-width: 34px;
-  }
-  .session-input {
-    flex: 1 1 100%;
-    min-width: 0;
-    max-width: none;
-    padding: 8px 10px;
-    font-size: 0.95rem;
-    border-radius: 8px;
-  }
-  .session-input::placeholder {
-    font-size: 0.85rem;
-  }
-  .btn-icon {
-    width: 32px;
-    height: 32px;
-    font-size: 1rem;
-  }
+  .session-stack { gap: 3px; }
+  .session-item { gap: 3px; padding: 2px 4px; }
+  .session-label { font-size: 0.68rem; min-width: 30px; }
+  .session-input { width: 58px; padding: 3px 3px; font-size: 0.78rem; }
+  .btn-icon { width: 20px; height: 20px; font-size: 0.75rem; }
 
-  /* Nút thao tác: xếp dọc, to */
-  .row-actions {
-    flex-direction: column;
-    gap: 4px;
-    align-items: stretch;
-  }
-  .btn-add, .btn-del-day {
-    padding: 8px 10px;
-    font-size: 0.82rem;
-    min-height: 36px;
-    text-align: center;
-  }
+  .row-actions { gap: 3px; }
+  .btn-add, .btn-del-day { padding: 3px 6px; font-size: 0.68rem; min-height: 28px; }
 
-  /* Summary: 2 cột */
-  .summary { padding: 12px 10px; }
-  .summary-grid { grid-template-columns: repeat(2, 1fr); gap: 6px; }
-  .summary-item { padding: 8px 6px; }
-  .summary-item .value { font-size: 0.95rem; }
+  .summary { padding: 10px 8px; }
+  .summary-grid { grid-template-columns: repeat(2, 1fr); gap: 5px; }
+  .summary-item { padding: 6px 5px; }
+  .summary-item .value { font-size: 0.88rem; }
 }
 
 /* Mobile rất nhỏ (< 400px) */
