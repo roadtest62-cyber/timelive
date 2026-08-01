@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Quản lý thời gian livestream</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <!-- Khung tổng thể của ứng dụng -->
+    <div class="app-shell">
+      <!-- Phần tiêu đề và giới thiệu -->
+      <header class="hero">
+        <h1>QUẢN LÝ THỜI GIAN LIVESTREAM</h1>
+        <p>Ghi nhận, tính tổng và lưu trữ thời gian livestream theo từng ngày trong tháng.</p>
+      </header>
+
+      <section class="controls card">
+        <div class="loading-overlay" id="loadingOverlay">
+          <div class="loading-spinner"></div>
+          <span>Đang tải dữ liệu...</span>
+        </div>
+        <div class="control-grid">
+          <label class="field">
+            <span>Tháng</span>
+            <select id="monthSelect"></select>
+          </label>
+
+          <label class="field">
+            <span>Năm</span>
+            <select id="yearSelect"></select>
+          </label>
+
+          <div class="button-group">
+            <button id="showMonthBtn" type="button">Hiển thị tháng</button>
+            <button id="addDayBtn" type="button" class="btn-primary">Thêm ngày</button>
+            <button id="clearMonthBtn" type="button" class="btn-danger">Xóa dữ liệu tháng</button>
+          </div>
+
+          <div class="button-group export-group">
+            <button id="exportCsvBtn" type="button">Xuất file CSV</button>
+            <button id="exportJsonBtn" type="button">Sao lưu JSON</button>
+            <button id="importJsonBtn" type="button">Nhập file JSON</button>
+          </div>
+        </div>
+
+        <input id="importFileInput" type="file" accept="application/json" hidden />
+      </section>
+
+      <section class="table-card card">
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>STT</th>
+                <th>Ngày</th>
+                <th>Các ca livestream</th>
+                <th>Tổng số ca</th>
+                <th>Tổng số phút trong ngày</th>
+                <th>Tổng thời gian trong ngày</th>
+                <th>Thao tác</th>
+              </tr>
+            </thead>
+            <tbody id="daysTableBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="summary card" id="summarySection"></section>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+    <script src="firebase-config.js"></script>
+    <script src="script.js"></script>
+  </body>
+</html>
