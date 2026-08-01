@@ -8,5 +8,8 @@
     ],
     "rewrites": [],
     "cleanUrls": true
+  },
+  "firestore": {
+    "rules": "firestore.rules"
   }
 }
