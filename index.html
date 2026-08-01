@@ -10,35 +10,26 @@
     <div class="app-shell">
       <header class="hero">
         <h1>QUẢN LÝ THỜI GIAN LIVESTREAM</h1>
-        <p>Ghi nhận, tính tổng và lưu trữ thời gian livestream theo từng ngày trong tháng.</p>
       </header>
 
       <section class="controls card">
         <div class="loading-overlay" id="loadingOverlay">
           <div class="loading-spinner"></div>
-          <span>Đang tải dữ liệu...</span>
+          <span>Đang tải...</span>
         </div>
-        <div class="control-grid">
-          <label class="field">
-            <span>Tháng</span>
+
+        <div class="control-row">
+          <div class="month-picker">
             <select id="monthSelect"></select>
-          </label>
-
-          <label class="field">
-            <span>Năm</span>
             <select id="yearSelect"></select>
-          </label>
-
-          <div class="button-group">
-            <button id="showMonthBtn" type="button">Hiển thị tháng</button>
-            <button id="clearMonthBtn" type="button" class="btn-danger">Xóa tháng</button>
-            <button id="clearAllBtn" type="button" class="btn-danger">Xóa tất cả</button>
           </div>
-
-          <div class="button-group export-group">
-            <button id="exportCsvBtn" type="button">Xuất file CSV</button>
-            <button id="exportJsonBtn" type="button">Sao lưu JSON</button>
-            <button id="importJsonBtn" type="button">Nhập file JSON</button>
+          <div class="top-actions">
+            <button id="exportCsvBtn" type="button" class="btn-ghost">CSV</button>
+            <button id="exportJsonBtn" type="button" class="btn-ghost">Sao lưu</button>
+            <button id="importJsonBtn" type="button" class="btn-ghost">Nhập</button>
+            <div class="divider"></div>
+            <button id="clearMonthBtn" type="button" class="btn-ghost btn-danger-text">Xóa tháng</button>
+            <button id="clearAllBtn" type="button" class="btn-ghost btn-danger-text">Xóa hết</button>
           </div>
         </div>
 
@@ -50,13 +41,10 @@
           <table>
             <thead>
               <tr>
-                <th class="col-stt">STT</th>
+                <th class="col-stt">#</th>
                 <th class="col-date">Ngày</th>
-                <th class="col-sessions">Các ca livestream</th>
-                <th class="col-count">Số ca</th>
-                <th class="col-minutes">Phút</th>
-                <th class="col-total">Tổng thời gian</th>
-                <th class="col-actions">Thao tác</th>
+                <th class="col-sessions">Ca livestream</th>
+                <th class="col-total">Tổng</th>
               </tr>
             </thead>
             <tbody id="daysTableBody"></tbody>
