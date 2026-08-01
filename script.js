@@ -57,14 +57,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('showMonthBtn').addEventListener('click', async () => {
       state.year = Number(yearSelect.value);
       state.month = Number(monthSelect.value);
-      showLoading();
-      await loadMonthData();
-      if (state.days.length === 0) {
-        state.days = buildMonthDays(state.year, state.month);
-        await saveMonth();
-      }
-      hideLoading();
-      render();
+      await loadMonth();
     });
 
     document.getElementById('clearMonthBtn').addEventListener('click', async () => {
@@ -91,20 +84,27 @@ document.addEventListener('DOMContentLoaded', () => {
     return `${year}_${String(month).padStart(2, '0')}`;
   }
 
-  async function loadMonthData() {
+  async function loadMonth() {
+    showLoading();
     try {
       const docRef = db.collection('livestream').doc(getDocId(state.year, state.month));
       const doc = await docRef.get();
-      if (doc.exists) {
-        const data = doc.data();
-        state.days = Array.isArray(data.days) ? data.days.map(normalizeDay) : [];
-      } else {
-        state.days = [];
-      }
+      const savedDays = doc.exists && Array.isArray(doc.data().days)
+        ? doc.data().days.map(normalizeDay)
+        : [];
+
+      const allDays = buildMonthDays(state.year, state.month);
+      const savedMap = new Map(savedDays.map((d) => [d.date, d]));
+
+      state.days = allDays.map((d) => savedMap.has(d.date) ? savedMap.get(d.date) : d);
+
+      await saveMonth();
     } catch (error) {
       console.error('Lỗi khi đọc dữ liệu từ Firebase:', error);
-      state.days = [];
+      state.days = buildMonthDays(state.year, state.month);
     }
+    hideLoading();
+    render();
   }
 
   async function saveMonth() {
